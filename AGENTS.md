@@ -19,6 +19,7 @@
 - 필드는 camelCase
 - 프로퍼티와 메서드는 PascalCase
 - 불필요한 LINQ 사용 금지
+- 네임스페이스는 유니티 폴더 구조와 일치하도록 생성 및 수정
 
 ## Commit Conventions
 
