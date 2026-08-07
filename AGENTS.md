@@ -19,7 +19,6 @@
 - 필드는 camelCase
 - 프로퍼티와 메서드는 PascalCase
 - 불필요한 LINQ 사용 금지
-- 기존 프로젝트의 네임스페이스 구조를 유지한다
 
 ## Commit Conventions
 
@@ -41,6 +40,7 @@
 ## Git workflow
 
 - 작업을 완료하고 검증한 뒤 로컬 커밋한다.
+- 관련 없는 작업은 스테이징 및 커밋하지 않는다.
 - 사용자가 명시적으로 요청하지 않으면 commit amend, rebase, reset, clean을 실행하지 않는다.
 - force push는 실행하지 않는다.
 - 모든 push는 사용자의 명시적인 승인을 받은 뒤 실행한다.
