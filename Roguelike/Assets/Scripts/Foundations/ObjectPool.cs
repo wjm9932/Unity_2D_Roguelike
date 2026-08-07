@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Roguelike.Foundations
+namespace Assets.Scripts.Foundations
 {
     public sealed class ObjectPool<T> where T : class, new()
     {

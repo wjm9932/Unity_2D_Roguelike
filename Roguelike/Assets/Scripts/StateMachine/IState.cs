@@ -1,6 +1,4 @@
-#nullable enable
-
-namespace Roguelike.StateMachine
+namespace Assets.Scripts.StateMachine
 {
     public interface IState
     {

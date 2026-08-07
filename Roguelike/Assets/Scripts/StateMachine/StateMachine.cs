@@ -1,35 +1,14 @@
-#nullable enable
-
-using System;
-
-namespace Roguelike.StateMachine
+namespace Assets.Scripts.StateMachine
 {
     public sealed class StateMachine
     {
-        private IState? currentState;
+        private IState currentState;
 
-        public IState? CurrentState => currentState;
-
-        public StateMachine()
-        {
-        }
-
-        public StateMachine(IState initialState)
-        {
-            ChangeState(initialState);
-        }
+        public IState CurrentState => currentState;
 
         public void ChangeState(IState nextState)
         {
-            if (nextState == null)
-            {
-                throw new ArgumentNullException(nameof(nextState));
-            }
-
-            if (ReferenceEquals(currentState, nextState))
-            {
-                return;
-            }
+            if (nextState == null) return;
 
             IState? previousState = currentState;
 
