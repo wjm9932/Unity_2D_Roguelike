@@ -33,6 +33,11 @@
 - Unity 실행 또는 컴파일 검증에 실패한 경우, 검증되지 않은 상태로 자동 커밋하지 않는다.
 - 검증 실패 원인을 사용자에게 보고하고 변경 사항은 작업 트리에 남겨둔다.
 
+## Unity Validation
+
+- Unity Editor를 이용한 패키지 resolve 및 컴파일 검증은 sandbox 내부에서 실행하지 않는다.
+- Unity.exe는 Licensing Client IPC 호환성을 위해 일반 사용자 세션에서 실행한다.
+
 ## Git workflow
 
 - 작업을 완료하고 검증한 뒤 로컬 커밋한다.
