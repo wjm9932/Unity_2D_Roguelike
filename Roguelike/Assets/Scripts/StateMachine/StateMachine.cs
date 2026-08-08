@@ -1,5 +1,5 @@
 using System;
-using Assets.Scripts.StateMachine.Internal;
+using Assets.Scripts.StateMachine.Contracts;
 
 namespace Assets.Scripts.StateMachine
 {
@@ -7,18 +7,17 @@ namespace Assets.Scripts.StateMachine
     {
         private IState currentState;
 
-        public PooledState CurrentState => currentState as PooledState;
+        public IState CurrentState => currentState;
 
-        public void ChangeState(PooledState nextState)
+        public void ChangeState(IState nextState)
         {
             if (nextState == null) return;
 
             IState previousState = currentState;
-            IState nextInternalState = nextState;
 
-            previousState?.Exit(nextInternalState);
-            currentState = nextInternalState;
-            nextInternalState.Enter(previousState);
+            previousState?.Exit(nextState);
+            currentState = nextState;
+            nextState.Enter(previousState);
         }
 
         public void Dispose()

@@ -1,8 +1,8 @@
 using System;
 
-namespace Assets.Scripts.StateMachine.Internal
+namespace Assets.Scripts.StateMachine.Contracts
 {
-    internal interface IState : IDisposable
+    public interface IState : IDisposable
     {
         void Enter(IState previousState);
 

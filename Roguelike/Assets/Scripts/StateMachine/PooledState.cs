@@ -1,22 +1,29 @@
 using System;
 using Assets.Scripts.Foundations;
-using Assets.Scripts.StateMachine.Internal;
+using Assets.Scripts.StateMachine.Contracts;
 
 namespace Assets.Scripts.StateMachine
 {
-    public abstract class PooledState : IDisposable, IState
+    public abstract class PooledState<TState> : IDisposable, IState
+        where TState : PooledState<TState>, new()
     {
+        private static readonly ObjectPool<TState> pool = new ObjectPool<TState>();
         private bool isDisposed;
 
-        internal PooledState()
+        public static int PoolCount => pool.Count;
+
+        public static TState GetOrCreate()
         {
+            TState state = pool.GetOrCreate();
+            state.isDisposed = false;
+            return state;
         }
 
-        public abstract void Enter(PooledState previousState);
+        public abstract void Enter(IState previousState);
 
         public abstract void Update(float dt);
 
-        public abstract void Exit(PooledState nextState);
+        public abstract void Exit(IState nextState);
 
         public void Dispose()
         {
@@ -24,46 +31,9 @@ namespace Assets.Scripts.StateMachine
 
             OnDispose();
             isDisposed = true;
-            ReturnToPool();
+            pool.Return((TState)this);
         }
 
         protected abstract void OnDispose();
-
-        private protected abstract void ReturnToPool();
-
-        internal void PrepareForUse()
-        {
-            isDisposed = false;
-        }
-
-        void IState.Enter(IState previousState)
-        {
-            Enter(previousState as PooledState);
-        }
-
-        void IState.Exit(IState nextState)
-        {
-            Exit(nextState as PooledState);
-        }
-    }
-
-    public abstract class PooledState<TState> : PooledState
-        where TState : PooledState<TState>, new()
-    {
-        private static readonly ObjectPool<TState> pool = new ObjectPool<TState>();
-
-        public static int PoolCount => pool.Count;
-
-        public static TState GetOrCreate()
-        {
-            TState state = pool.GetOrCreate();
-            state.PrepareForUse();
-            return state;
-        }
-
-        private protected sealed override void ReturnToPool()
-        {
-            pool.Return((TState)this);
-        }
     }
 }
