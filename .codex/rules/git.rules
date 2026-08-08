@@ -1,13 +1,17 @@
-# 로컬 커밋은 승인 없이 허용
-
 prefix_rule(
-    pattern = ["git", "add", "commit"],
+    pattern = ["git", "add"],
     decision = "allow",
-    justification = "로컬 스테이징 및 커밋은 원격 저장소에 영향을 주지 않으므로 허용합니다.",
+    justification = "로컬 스테이징은 원격 저장소에 영향을 주지 않으므로 허용합니다.",
+)
+
+# 로컬 커밋 허용
+prefix_rule(
+    pattern = ["git", "commit"],
+    decision = "allow",
+    justification = "로컬 커밋은 원격 저장소에 영향을 주지 않으므로 허용합니다.",
 )
 
 # 원격 저장소에 푸시하기 전에는 반드시 승인 요청
-
 prefix_rule(
     pattern = ["git", "push"],
     decision = "prompt",
@@ -15,7 +19,6 @@ prefix_rule(
 )
 
 # Git 히스토리 변경 작업
-
 prefix_rule(
     pattern = ["git", "rebase"],
     decision = "prompt",

@@ -37,6 +37,7 @@
 
 - Unity Editor를 이용한 패키지 resolve 및 컴파일 검증은 sandbox 내부에서 실행하지 않는다.
 - Unity.exe는 Licensing Client IPC 호환성을 위해 일반 사용자 세션에서 실행한다.
+- Unity 컴파일을 위한 일반 사용자 세션에서 실행할 때는 사용자에게 승인 받을 필요 없다.
 
 ## Git workflow
 
