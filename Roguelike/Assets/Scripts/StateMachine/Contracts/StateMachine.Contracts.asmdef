@@ -1,6 +1,6 @@
 {
     "name": "StateMachine.Contracts",
-    "rootNamespace": "Assets.Scripts.StateMachine.Contracts",
+    "rootNamespace": "",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

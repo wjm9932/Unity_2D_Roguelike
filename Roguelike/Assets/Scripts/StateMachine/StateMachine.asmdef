@@ -1,6 +1,6 @@
 {
     "name": "StateMachine",
-    "rootNamespace": "Assets.Scripts.StateMachine",
+    "rootNamespace": "",
     "references": [
         "GUID:ad4958bb75ff642429eaa1162d6d052d",
         "GUID:b599301fcd4b4e098ecf4bbeb66db574"
