@@ -1,6 +1,8 @@
+using System;
+
 namespace Assets.Scripts.StateMachine
 {
-    public sealed class StateMachine
+    public sealed class StateMachine : IDisposable
     {
         private IState currentState;
 
@@ -10,11 +12,16 @@ namespace Assets.Scripts.StateMachine
         {
             if (nextState == null) return;
 
-            IState? previousState = currentState;
+            IState previousState = currentState;
 
             previousState?.Exit(nextState);
             currentState = nextState;
             nextState.Enter(previousState);
+        }
+
+        public void Dispose()
+        {
+            currentState?.OnDispose();
         }
     }
 }

@@ -2,8 +2,12 @@ namespace Assets.Scripts.StateMachine
 {
     public interface IState
     {
-        void Enter(IState? previousState);
+        public void Enter(IState previousState);
 
-        void Exit(IState nextState);
+        public void Update(float dt);
+
+        public void Exit(IState nextState);
+
+        public void OnDispose();
     }
 }
