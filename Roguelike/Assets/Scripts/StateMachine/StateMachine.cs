@@ -13,15 +13,18 @@ namespace Assets.Scripts.StateMachine
         {
             if (nextState == null) return;
 
-            IState previousState = currentState;
+            var previousState = currentState;
 
             previousState?.Exit(nextState);
             currentState = nextState;
             nextState.Enter(previousState);
+
+            previousState?.Dispose();
         }
 
         public void Dispose()
         {
+            currentState?.Exit(null);
             currentState?.Dispose();
             currentState = null;
         }
