@@ -1,4 +1,5 @@
 using System;
+using Assets.Scripts.StateMachine.Contracts;
 
 namespace Assets.Scripts.StateMachine
 {
@@ -12,16 +13,20 @@ namespace Assets.Scripts.StateMachine
         {
             if (nextState == null) return;
 
-            IState previousState = currentState;
+            var previousState = currentState;
 
             previousState?.Exit(nextState);
             currentState = nextState;
             nextState.Enter(previousState);
+
+            previousState?.Dispose();
         }
 
         public void Dispose()
         {
-            currentState?.OnDispose();
+            currentState?.Exit(null);
+            currentState?.Dispose();
+            currentState = null;
         }
     }
 }
