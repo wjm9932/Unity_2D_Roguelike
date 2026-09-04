@@ -1,5 +1,5 @@
 ﻿<Solution>
-  <Project Path="StateMachine.Contracts.csproj" />
+  <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
   <Project Path="Foundations.csproj" />
 </Solution>
