@@ -1,6 +1,5 @@
 using System;
 using Assets.Scripts.Foundations;
-using Assets.Scripts.StateMachine.Contracts;
 
 namespace Assets.Scripts.StateMachine
 {
