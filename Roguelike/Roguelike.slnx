@@ -1,5 +1,7 @@
 ﻿<Solution>
+  <Project Path="BehaviourTree.Runtime.csproj" />
   <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
   <Project Path="Foundations.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>
