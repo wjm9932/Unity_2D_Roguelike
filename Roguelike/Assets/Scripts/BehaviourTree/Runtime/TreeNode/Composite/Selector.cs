@@ -1,11 +1,11 @@
-using BehaviourTree.Runtime.TreeNode;
+﻿using BehaviourTree.Runtime.TreeNode;
 using BehaviourTree.Runtime.TreeNode.CompositeNode;
 using System;
 using UnityEngine;
 
 namespace Maze.BattleSystem.BehaviourTree.Runtime.TreeNode.Composite
 {
-    public class Sequence : CompositeNode
+    public class Selector : CompositeNode
     {
         protected override NodeState OnEvaluate(float dt)
         {
@@ -21,22 +21,22 @@ namespace Maze.BattleSystem.BehaviourTree.Runtime.TreeNode.Composite
                 switch (state)
                 {
                     case NodeState.Success:
-                        continue;
+                        return NodeState.Success;
                     case NodeState.Running:
                         return NodeState.Running;
                     case NodeState.Pending:
                         return NodeState.Pending;
                     case NodeState.Failure:
-                        return NodeState.Failure;
+                        continue;
                     default:
                         {
-                            Debug.LogError($"Invalid State returned in Sequence: {state}");
+                            Debug.LogError($"Invalid State returned in Selector: {state}");
                             throw new ArgumentOutOfRangeException();
                         }
                 }
             }
 
-            return NodeState.Success;
+            return NodeState.Failure;
         }
     }
 }

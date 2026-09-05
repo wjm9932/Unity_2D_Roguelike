@@ -1,6 +1,6 @@
 {
     "name": "BehaviourTree.Runtime",
-    "rootNamespace": "BehaviourTree.Runtime",
+    "rootNamespace": "",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
