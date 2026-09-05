@@ -6,7 +6,7 @@ namespace Assets.Scripts.StateMachine
     public abstract class PooledState<TState> : IState
         where TState : PooledState<TState>, new()
     {
-        private static readonly ObjectPool<TState> pool = new ObjectPool<TState>();
+        private static readonly ObjectPool<TState> pool = new();
 
         public static TState GetOrCreate()
         {
