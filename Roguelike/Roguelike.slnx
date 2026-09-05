@@ -1,5 +1,6 @@
 ﻿<Solution>
   <Project Path="BehaviourTree.Runtime.csproj" />
+  <Project Path="BehaviourTree.Data.csproj" />
   <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
   <Project Path="Foundations.csproj" />
