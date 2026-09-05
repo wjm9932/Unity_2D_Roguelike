@@ -1,7 +1,7 @@
 using System;
-using Assets.Scripts.Foundations;
+using Foundations;
 
-namespace Assets.Scripts.StateMachine
+namespace StateMachine
 {
     public abstract class PooledState<TState> : IState
         where TState : PooledState<TState>, new()

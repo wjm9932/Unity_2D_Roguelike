@@ -1,6 +1,6 @@
 {
     "name": "Foundations",
-    "rootNamespace": "",
+    "rootNamespace": "Foundations",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

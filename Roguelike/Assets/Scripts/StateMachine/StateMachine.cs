@@ -1,6 +1,6 @@
 using System;
 
-namespace Assets.Scripts.StateMachine
+namespace StateMachine
 {
     public sealed class StateMachine : IDisposable
     {
