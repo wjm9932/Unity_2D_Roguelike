@@ -1,0 +1,18 @@
+{
+    "name": "Pawn",
+    "rootNamespace": "",
+    "references": [
+        "GUID:ad4958bb75ff642429eaa1162d6d052d",
+        "GUID:db84bfcee4c12734dbf1e25012c1a5b8",
+        "GUID:a5c84aaa0a5aa644b876d670d18285b8"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

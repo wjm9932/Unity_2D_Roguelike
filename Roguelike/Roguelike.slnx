@@ -1,5 +1,8 @@
 ﻿<Solution>
+  <Project Path="Pawn.csproj" />
+  <Project Path="Pawn.Controller.csproj" />
   <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
+  <Project Path="Pawn.Interface.csproj" />
   <Project Path="Foundations.csproj" />
 </Solution>

@@ -1,0 +1,16 @@
+{
+    "name": "Pawn.Controller",
+    "rootNamespace": "",
+    "references": [
+        "GUID:db84bfcee4c12734dbf1e25012c1a5b8"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
