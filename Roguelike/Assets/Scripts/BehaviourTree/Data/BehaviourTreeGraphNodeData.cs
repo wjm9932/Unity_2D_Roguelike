@@ -1,8 +1,8 @@
 ﻿using System;
 using UnityEngine;
-using Assets.Scripts.BehaviourTree.Data.Node;
+using BehaviourTree.Data.Node;
 
-namespace Assets.Scripts.BehaviourTree.Data
+namespace BehaviourTree.Data
 {
     [Serializable]
 	public class BehaviourTreeGraphNodeData

@@ -1,7 +1,9 @@
 {
     "name": "BehaviourTree.Runtime",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GUID:6b81be1f6841f7546b84a1f3073d1336"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

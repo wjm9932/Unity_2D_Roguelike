@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Assets.Scripts.BehaviourTree.Data.Node
+namespace BehaviourTree.Data.Node
 {
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class NodeCategoryAttribute : Attribute
@@ -38,11 +38,6 @@ namespace Assets.Scripts.BehaviourTree.Data.Node
         [NodeCategory(NodeCategory.Condition)] CoolDown,
 
         [NodeCategory(NodeCategory.Action)] Wait,
-        [NodeCategory(NodeCategory.Action)] WaitForDetectingPlayer,
-        [NodeCategory(NodeCategory.Action)] ActionProcessor,
-        [NodeCategory(NodeCategory.Action)] MoveForward,
-        [NodeCategory(NodeCategory.Action)] MoveBackward,
-        [NodeCategory(NodeCategory.Action)] MoveStrafe,
         [NodeCategory(NodeCategory.Action)] SubTree,
 
         [NodeCategory(NodeCategory.Composite)] Composite,
