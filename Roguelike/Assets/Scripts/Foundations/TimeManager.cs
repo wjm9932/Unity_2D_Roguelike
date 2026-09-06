@@ -5,6 +5,6 @@
         public static TimeManager Instance => instance ??= new TimeManager();
         private static TimeManager instance;
 
-        public float DeltaTime => UnityEngine.Time.deltaTime;
+        public float InGameDeltaTime => UnityEngine.Time.deltaTime;
     }
 }

@@ -24,7 +24,7 @@ namespace Pawn
 
         private void Update()
         {
-            this.OnUpdate(TimeManager.Instance.DeltaTime);
+            this.OnUpdate(TimeManager.Instance.InGameDeltaTime);
         }
     }
 
