@@ -2,6 +2,6 @@ prefix_rule(
     pattern = [
         "C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.21f1\\Editor\\Unity.exe"
     ],
-    decision = "prompt",
+    decision = "allow",
     justification = "Unity Editor 검증은 Licensing Client IPC를 사용해야 하므로 sandbox 밖의 일반 사용자 세션에서 실행합니다.",
 )
