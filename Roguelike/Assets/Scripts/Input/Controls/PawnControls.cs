@@ -19,7 +19,7 @@ namespace Input.Controls
 
     /// <summary>
     /// 외부에는 폰 입력 상태와 활성화 제어만 노출한다.
-    /// 리소스의 해제는 InputManager가 담당한다.
+    /// 리소스의 해제는 외부로 노출하지 않고 InputManager가 담당한다.
     /// </summary>
     public interface IPawnControls
     {
