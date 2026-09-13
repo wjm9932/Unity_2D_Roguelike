@@ -45,6 +45,7 @@ namespace Pawn
 
             this.ThrowUpdate(dt);
 
+            // 이동 요청은 큐에 쌓아놓고 한번에 처리
             pawnMover.OnUpdate(dt);
         }
 
