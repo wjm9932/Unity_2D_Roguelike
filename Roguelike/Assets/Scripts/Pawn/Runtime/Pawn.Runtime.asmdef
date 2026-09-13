@@ -1,8 +1,13 @@
 {
-    "name": "Pawn.Controller",
+    "name": "Pawn.Runtime",
     "rootNamespace": "",
     "references": [
-        "GUID:db84bfcee4c12734dbf1e25012c1a5b8"
+        "GUID:ad4958bb75ff642429eaa1162d6d052d",
+        "GUID:504b1583b1bd43f47bc2e7820024c124",
+        "GUID:db84bfcee4c12734dbf1e25012c1a5b8",
+        "GUID:58b8e71b641546545826b4314162793c",
+        "GUID:daf1fda350315b64db8a5fd26818f855",
+        "GUID:66be8a96abb8431cb03244597224a5ea"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
