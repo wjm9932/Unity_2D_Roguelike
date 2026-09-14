@@ -4,4 +4,5 @@
   <Project Path="StateMachine.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Foundations.csproj" />
+  <Project Path="Game.csproj" />
 </Solution>
