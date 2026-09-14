@@ -19,7 +19,7 @@ namespace Pawn
         private IPawnController pawnController;
         private IPawnBehaviour pawnBehaviour;
 
-        private PawnMover pawnMover;
+        private IPawnMovement pawnMovement;
 
         [Obsolete("지금은 Pawn 생성 로직이 없어 SerializeField로 선언하지만 추후 주입하는 방식으로 수정 예정")]
         [SerializeField] private PawnDefinition pawnDefinition;
@@ -31,7 +31,7 @@ namespace Pawn
 
             pawnBehaviour = new PawnBehaviour();
 
-            pawnMover = new PawnMover(GetComponent<Rigidbody2D>(), pawnDefinition.PawnStatsDefinition.AccelerationCurve);
+            pawnMovement = new PawnMovement(GetComponent<Rigidbody2D>(), pawnDefinition.PawnStatsDefinition.AccelerationCurve);
         }
 
         private void Start()
@@ -46,7 +46,7 @@ namespace Pawn
             this.ThrowUpdate(dt);
 
             // 이동 요청은 큐에 쌓아놓고 한번에 처리
-            pawnMover.OnUpdate(dt);
+            pawnMovement.OnMove(dt);
         }
 
         public bool OnEvent(EventSystem.Event e) => this.ThrowEvent(e);

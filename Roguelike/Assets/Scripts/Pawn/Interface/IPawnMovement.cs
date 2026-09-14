@@ -15,6 +15,16 @@ namespace Pawn.Interface
         public Vector2 Vector { get; private set; }
     }
 
+    public interface IPawnMovement : IPawnMover, IMoveRequestReceiver
+    {
+  
+    }
+
+    public interface IPawnMover
+    {
+        public void OnMove(float dt);
+    }
+
     public interface IMoveRequestReceiver
     {
         public void Enqueue(MoveRequest moveRequest);

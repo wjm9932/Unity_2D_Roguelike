@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Pawn.Runtime
 {
-    internal class PawnMover : IMoveRequestReceiver
+    internal class PawnMovement : IPawnMovement
     {
         private Queue<MoveRequest> moveRequests = new();
 
@@ -14,7 +14,7 @@ namespace Pawn.Runtime
 
         private float accelElapsedTime;
 
-        internal PawnMover(Rigidbody2D rb, AnimationCurve accelerationCurve)
+        internal PawnMovement(Rigidbody2D rb, AnimationCurve accelerationCurve)
         {
             this.rb = rb;
             this.accelerationCurve = accelerationCurve;
@@ -22,7 +22,7 @@ namespace Pawn.Runtime
 
         public void Enqueue(MoveRequest moveRequest) => moveRequests.Enqueue(moveRequest);
 
-        internal void OnUpdate(float dt)
+        public void OnMove(float dt)
         {
             Vector2 activeVelocity = Vector2.zero;
             Vector2 passiveVelocity = Vector2.zero;
