@@ -11,8 +11,14 @@ namespace Pawn.Interface
 
     public struct MoveRequest
     {
-        public MoveType MoveType { get; private set; }
-        public Vector2 Vector { get; private set; }
+        public MoveType MoveType { get; }
+        public Vector2 Vector { get; }
+
+        public MoveRequest(MoveType moveType, Vector2 vector)
+        {
+            MoveType = moveType;
+            Vector = vector;
+        }
     }
 
     public interface IPawnMovement : IPawnMover, IMoveRequestReceiver

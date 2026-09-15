@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using UnityEngine;
 
-namespace Assets.Scripts.Pawn.Interface
+namespace Pawn.Interface
 {
-    internal interface IPawnStatsBehaviour
+    public interface IPawnStatsBehaviour
     {
+        public IPawnStatsDefinition StatsDefinition { get; }
     }
 }

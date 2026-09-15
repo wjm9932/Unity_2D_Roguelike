@@ -1,3 +1,16 @@
 {
-	"name": "Pawn.Interface"
+    "name": "Pawn.Interface",
+    "rootNamespace": "",
+    "references": [
+        "GUID:58b8e71b641546545826b4314162793c"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

@@ -3,7 +3,8 @@ using UnityEngine;
 
 public interface IPawnStatsDefinition
 {
-
+    public float Speed { get; }
+    public AnimationCurve AccelerationCurve { get; }
 }
 
 [Serializable]
