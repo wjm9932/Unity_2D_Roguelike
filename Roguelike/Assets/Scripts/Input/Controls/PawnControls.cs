@@ -5,12 +5,12 @@ using static RogueLikeInput;
 
 namespace Input.Controls
 {
-    public struct Move
+    public struct MoveInfo
     {
         public readonly Vector2 RawValue;
         public readonly bool IsMoving;
 
-        public Move(Vector2 rawValue)
+        public MoveInfo(Vector2 rawValue)
         {
             RawValue = rawValue;
             IsMoving = !(Mathf.Abs(rawValue.x) < Mathf.Epsilon && Mathf.Abs(rawValue.y) < Mathf.Epsilon);
@@ -23,7 +23,7 @@ namespace Input.Controls
     /// </summary>
     public interface IPawnControls
     {
-        public ReadOnlyReactiveProperty<Move> Move { get; }
+        public ReadOnlyReactiveProperty<MoveInfo> Move { get; }
         
         public void Enable();
 
@@ -35,8 +35,8 @@ namespace Input.Controls
     /// </summary>
     internal partial class PawnControls : IPawnControls
     {
-        public ReadOnlyReactiveProperty<Move> Move => move;
-        private readonly ReactiveProperty<Move> move = new();
+        public ReadOnlyReactiveProperty<MoveInfo> Move => move;
+        private readonly ReactiveProperty<MoveInfo> move = new();
 
         public void Enable()
         {
@@ -80,7 +80,7 @@ namespace Input.Controls
 
             public void UnRegister() => actions.RemoveCallbacks(this);
 
-            public void OnMove(InputAction.CallbackContext context) => controls.move.Value = new Move(context.ReadValue<Vector2>());
+            public void OnMove(InputAction.CallbackContext context) => controls.move.Value = new MoveInfo(context.ReadValue<Vector2>());
         }
 
         private PawnInputAdapter pawnInputAdapter;

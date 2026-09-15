@@ -1,7 +1,10 @@
 ﻿<Solution>
+  <Project Path="Pawn.Runtime.csproj" />
   <Project Path="Input.csproj" />
   <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
+  <Project Path="Pawn.Interface.csproj" />
+  <Project Path="Pawn.Data.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Foundations.csproj" />
   <Project Path="Game.csproj" />
