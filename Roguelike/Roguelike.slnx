@@ -1,6 +1,6 @@
 ﻿<Solution>
-  <Project Path="Input.csproj" />
   <Project Path="Pawn.Runtime.csproj" />
+  <Project Path="Input.csproj" />
   <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
   <Project Path="Pawn.Interface.csproj" />

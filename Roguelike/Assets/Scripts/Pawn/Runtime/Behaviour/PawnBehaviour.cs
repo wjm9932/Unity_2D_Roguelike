@@ -13,7 +13,7 @@ namespace Pawn.Runtime.Controller
 
         public void OnUpdate(float dt)
         {
-            stateMachine.CurrentState.Update(dt);
+            //stateMachine.CurrentState.Update(dt);
         }
 
         public bool OnEvent(Event e)

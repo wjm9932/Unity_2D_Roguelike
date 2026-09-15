@@ -6,6 +6,7 @@ using Pawn.Runtime.Controller;
 using Pawn.Runtime;
 using Pawn.Data;
 using System;
+using Input;
 
 namespace Pawn
 {
@@ -14,15 +15,16 @@ namespace Pawn
     public class Pawn : MonoBehaviour, IEventListener
     {
         public IPawnController PawnController => pawnController;
+        public IPawnStatsBehaviour PawnStatsBehaviour => pawnStatsBehaviour;
         public IPawnBehaviour PawnBehaviour => pawnBehaviour;
 
         private IPawnController pawnController;
+        private IPawnStatsBehaviour pawnStatsBehaviour;
         private IPawnBehaviour pawnBehaviour;
 
         private IPawnMovement pawnMovement;
 
-        [Obsolete("지금은 Pawn 생성 로직이 없어 SerializeField로 선언하지만 추후 주입하는 방식으로 수정 예정")]
-        [SerializeField] private PawnDefinition pawnDefinition;
+        public AnimationCurve test;
 
         private void Awake()
         {
@@ -31,12 +33,14 @@ namespace Pawn
 
             pawnBehaviour = new PawnBehaviour();
 
-            pawnMovement = new PawnMovement(GetComponent<Rigidbody2D>(), pawnDefinition.PawnStatsDefinition.AccelerationCurve);
+            //pawnMovement = new PawnMovement(GetComponent<Rigidbody2D>(), pawnStatsBehaviour.StatsDefinition.AccelerationCurve);
+            #region Test
+            pawnMovement = new PawnMovement(GetComponent<Rigidbody2D>(), test);
+            #endregion
         }
 
         private void Start()
         {
-
         }
 
         private void Update()
@@ -45,10 +49,21 @@ namespace Pawn
 
             this.ThrowUpdate(dt);
 
+            #region Test
+            var move = InputManager.Instance.PawnControls.Move.CurrentValue;
+            if (move.IsMoving)
+            {
+                pawnMovement.Enqueue(new MoveRequest(MoveType.Active, move.RawValue * 2f));
+            }
+            #endregion
+
             // 이동 요청은 큐에 쌓아놓고 한번에 처리
             pawnMovement.OnMove(dt);
         }
 
-        public bool OnEvent(EventSystem.Event e) => this.ThrowEvent(e);
+        public bool OnEvent(EventSystem.Event e)
+        {
+            return this.ThrowEvent(e);
+        }
     }
 }
