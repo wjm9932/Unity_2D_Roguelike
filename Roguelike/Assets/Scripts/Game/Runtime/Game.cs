@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Game
+namespace Game.Runtime
 {
     public class Game
     {

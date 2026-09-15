@@ -1,0 +1,17 @@
+{
+    "name": "Game.Data",
+    "rootNamespace": "",
+    "references": [
+        "GUID:58b8e71b641546545826b4314162793c",
+        "GUID:9e24947de15b9834991c9d8411ea37cf"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

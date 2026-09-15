@@ -5,6 +5,6 @@ public static class Bootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void BeforeSceneLoad()
     {
-        Game.Game.Initialize();
+        Game.Runtime.Game.Initialize();
     }
 }
