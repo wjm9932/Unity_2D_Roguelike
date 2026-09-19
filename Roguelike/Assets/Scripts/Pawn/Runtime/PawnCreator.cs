@@ -15,18 +15,21 @@ namespace Pawn.Runtime
         {
             var container = new GameObject(pawnDefinition.name);
             var adapter = container.AddComponent<PawnAdapter>();
+         
             var rb = container.AddComponent<Rigidbody2D>();
-            
+            rb.gravityScale = 0f;
+
             var avatar = Object.Instantiate(pawnDefinition.PawnAssetDefinition.Avatar, container.transform);
             avatar.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 
-            var controller = new ManualPawnController();
-            var statsBehaviour = new PawnStatsBehaviour();
-            var behaviour = new PawnBehaviour();
             var movement = new PawnMovement(rb, pawnDefinition.PawnStatsDefinition.AccelerationCurve);
+            var controller = new ManualPawnController();
+            var statsBehaviour = new PawnStatsBehaviour(pawnDefinition.PawnStatsDefinition);
+            var behaviour = new PawnBehaviour(adapter.transform, movement, pawnDefinition.PawnStatsDefinition);
             var pawn = new Pawn(controller, statsBehaviour, behaviour, movement);
 
-            adapter.Initialize(pawn.Update);
+            disposeLinker.Inject(pawn);
+            adapter.Initialize(pawn.Update, pawn.Dispose);
 
             return pawn;
         }

@@ -1,14 +1,16 @@
 using Foundations;
 using EventSystem;
 using Pawn.Interface;
+using System;
 
 namespace Pawn.Runtime
 {
-    internal class Pawn : IPawn, IEventListener
+    internal class Pawn : IPawn, IEventListener, IDisposable
     {
         public IPawnController PawnController => pawnController;
         public IPawnStatsBehaviour PawnStatsBehaviour => pawnStatsBehaviour;
         public IPawnBehaviour PawnBehaviour => pawnBehaviour;
+        public IMoveRequestReceiver MoveRequestReceiver => pawnMovement;
 
         private IPawnController pawnController;
         private IPawnStatsBehaviour pawnStatsBehaviour;
@@ -24,7 +26,7 @@ namespace Pawn.Runtime
             pawnMovement = movement;
         }
 
-        public void Update()
+        internal void Update()
         {
             var dt = TimeManager.Instance.InGameDeltaTime;
 
@@ -37,6 +39,10 @@ namespace Pawn.Runtime
         public bool OnEvent(Event e)
         {
             return this.ThrowEvent(e);
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

@@ -40,6 +40,9 @@ namespace Input.Controls
 
         public void Enable()
         {
+            // 혹시 모를 중복 등록을 막기 위해 명시적으로 Disable 한 번 수행
+            Disable();
+
             pawnInputAdapter.Register();
         }
 
