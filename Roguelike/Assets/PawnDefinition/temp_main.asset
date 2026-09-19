@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b1ad693461be784b8d2cdd47f4b7bf2, type: 3}
+  m_Name: temp_main
+  m_EditorClassIdentifier: Pawn.Data::Pawn.Data.PawnDefinition
+  pawnAssetDefinition:
+    avatar: {fileID: 9214124318480007271, guid: 079fc677e417bfa46ad88dbe10bc9df5, type: 3}
+  pawnStatsDefinition:
+    speed: 4
+    accelerationCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 9.442159
+        outSlope: 9.442159
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.044562764
+      - serializedVersion: 3
+        time: 0.3
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4

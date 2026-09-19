@@ -1,6 +1,6 @@
 using EventSystem;
 
-namespace Pawn.Runtime.Controller
+namespace Pawn.Runtime.Behaviour
 {
     public class PawnBehaviour : IPawnBehaviour, IEventListener
     {

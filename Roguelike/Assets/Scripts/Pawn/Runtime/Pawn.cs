@@ -1,18 +1,10 @@
-using UnityEngine;
 using Foundations;
-using Pawn.Interface;
 using EventSystem;
-using Pawn.Runtime.Controller;
-using Pawn.Runtime;
-using Pawn.Data;
-using System;
-using Input;
+using Pawn.Interface;
 
-namespace Pawn
+namespace Pawn.Runtime
 {
-    [DisallowMultipleComponent]
-    [RequireComponent(typeof(Rigidbody2D))]
-    public class Pawn : MonoBehaviour, IEventListener
+    internal class Pawn : IPawn, IEventListener
     {
         public IPawnController PawnController => pawnController;
         public IPawnStatsBehaviour PawnStatsBehaviour => pawnStatsBehaviour;
@@ -24,44 +16,25 @@ namespace Pawn
 
         private IPawnMovement pawnMovement;
 
-        public AnimationCurve test;
-
-        private void Awake()
+        public Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMovement movement)
         {
-            // FIXME: 일단 메뉴얼만. 이후 분기쳐서 controller 할당
-            pawnController = new ManualPawnController();
-
-            pawnBehaviour = new PawnBehaviour();
-
-            //pawnMovement = new PawnMovement(GetComponent<Rigidbody2D>(), pawnStatsBehaviour.StatsDefinition.AccelerationCurve);
-            #region Test
-            pawnMovement = new PawnMovement(GetComponent<Rigidbody2D>(), test);
-            #endregion
+            pawnController = controller;
+            pawnStatsBehaviour = statsBehaviour;
+            pawnBehaviour = behaviour;
+            pawnMovement = movement;
         }
 
-        private void Start()
-        {
-        }
-
-        private void Update()
+        public void Update()
         {
             var dt = TimeManager.Instance.InGameDeltaTime;
 
             this.ThrowUpdate(dt);
 
-            #region Test
-            var move = InputManager.Instance.PawnControls.Move.CurrentValue;
-            if (move.IsMoving)
-            {
-                pawnMovement.Enqueue(new MoveRequest(MoveType.Active, move.RawValue * 2f));
-            }
-            #endregion
-
             // 이동 요청은 큐에 쌓아놓고 한번에 처리
             pawnMovement.OnMove(dt);
         }
 
-        public bool OnEvent(EventSystem.Event e)
+        public bool OnEvent(Event e)
         {
             return this.ThrowEvent(e);
         }

@@ -22,7 +22,7 @@ namespace Pawn.Runtime
 
         public void Enqueue(MoveRequest moveRequest) => moveRequests.Enqueue(moveRequest);
 
-        public void OnMove(float dt)
+        void IPawnMover.OnMove(float dt)
         {
             Vector2 activeVelocity = Vector2.zero;
             Vector2 passiveVelocity = Vector2.zero;
