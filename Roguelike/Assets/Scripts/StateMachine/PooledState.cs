@@ -8,7 +8,7 @@ namespace StateMachine
     {
         private static readonly ObjectPool<TState> pool = new();
 
-        public static TState GetOrCreate()
+        protected static TState GetOrCreate()
         {
             TState state = pool.GetOrCreate();
             return state;
@@ -20,9 +20,11 @@ namespace StateMachine
 
         public abstract void Exit(IState nextState);
 
+        public abstract void OnDispose();
+
         void IState.Dispose()
         {
-            (this as IDisposable)?.Dispose();
+            OnDispose();
 
             pool.Return((TState)this);
         }
