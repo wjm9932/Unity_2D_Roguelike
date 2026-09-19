@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Pawn Definitions
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Pawn Definitions
+  m_GUID: f7647bf48c76b784ab65dbd2fcdf1165
+  m_SerializeEntries:
+  - m_GUID: 550b04b6e2cb0004688cb0887eb3f262
+    m_Address: Assets/PawnDefinition/temp_main.asset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: a7c481f5f0f7fbf48a1924f1d7b4141e, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 2030a9ae0ecb733419cf5bd99fe25e1b, type: 2}
+    - {fileID: 11400000, guid: 04823ce8647f13c4da21e5d12b91d025, type: 2}
