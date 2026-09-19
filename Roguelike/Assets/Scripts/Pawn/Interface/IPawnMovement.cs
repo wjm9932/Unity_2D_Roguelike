@@ -23,12 +23,12 @@ namespace Pawn.Interface
 
     public interface IPawnMovement : IPawnMover, IMoveRequestReceiver
     {
-  
+
     }
 
     public interface IPawnMover
     {
-        public void OnMove(float dt);
+        void OnMove(float dt);
     }
 
     public interface IMoveRequestReceiver
