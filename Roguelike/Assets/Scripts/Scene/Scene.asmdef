@@ -1,10 +1,8 @@
 {
-    "name": "Game.Runtime",
+    "name": "Scene",
     "rootNamespace": "",
     "references": [
-        "GUID:a1a6aed90f7ae09448eec74fb259bc73",
-        "GUID:f51ebe6a0ceec4240a699833d6309b23",
-        "GUID:365fe64a93e8daa418219c72606b2434"
+        "GUID:f51ebe6a0ceec4240a699833d6309b23"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
