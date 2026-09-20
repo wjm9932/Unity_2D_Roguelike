@@ -6,10 +6,26 @@ namespace Kinematic.Runtime
     public sealed class KinematicBody
     {
         private readonly Transform target;
-        internal bool IsStatic { get; }
+        private Vector2 anchorPosition;
+
         public ColliderInfo Shape { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
-        private Vector2 anchorPosition;
+
+        internal bool IsStatic { get; }
+        internal AABB Bounds
+        {
+            get
+            {
+                var extents = Shape.Shape switch
+                {
+                    Data.Shape.Circle => Vector2.one * Shape.Radius,
+                    Data.Shape.Box => Shape.HalfExtents,
+                    _ => Vector2.zero
+                };
+
+                return AABB.Create(Center, extents);
+            }
+        }
 
         public KinematicBody(Transform transform, ColliderInfo shape, bool isStatic)
         {
