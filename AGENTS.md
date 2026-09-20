@@ -46,3 +46,8 @@
 - 사용자가 명시적으로 요청하지 않으면 commit amend, rebase, reset, clean을 실행하지 않는다.
 - force push는 실행하지 않는다.
 - 모든 push는 사용자의 명시적인 승인을 받은 뒤 실행한다.
+
+## Git command execution
+
+- `git add`와 `git commit`은 이미 승인된 명령이므로 사용자에게 다시 승인을 요청하지 않는다.
+- `git add`와 `git commit`은 다른 명령과 결합하지 않고 각각 독립적으로 실행한다.
