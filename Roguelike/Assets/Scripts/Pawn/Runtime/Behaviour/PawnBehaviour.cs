@@ -10,14 +10,14 @@ namespace Pawn.Runtime.Behaviour
         private StateMachine.StateMachine stateMachine;
 
         private Transform pawnTransform;
-        private IPawnStatsDefinition pawnStats;
         private IMoveRequestReceiver moveRequestReceiver; 
+        private IPawnStatsDefinition pawnStats;
 
         public PawnBehaviour(Transform transform, IMoveRequestReceiver receiver, IPawnStatsDefinition stats)
         {
             pawnTransform = transform;
-            pawnStats = stats;
             moveRequestReceiver = receiver;
+            pawnStats = stats;
 
             stateMachine = new StateMachine.StateMachine();
             stateMachine.ChangeState(PawnIdleSprintState.Create(stats.Speed, moveRequestReceiver));

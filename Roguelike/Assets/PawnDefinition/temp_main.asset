@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Pawn.Data::Pawn.Data.PawnDefinition
   pawnAssetDefinition:
     avatar: {fileID: 9214124318480007271, guid: 079fc677e417bfa46ad88dbe10bc9df5, type: 3}
+    colliderInfo:
+      shape: 0
+      offset: {x: 0, y: 0}
+      radius: 0.5
+      halfExtents: {x: 0, y: 0}
   pawnStatsDefinition:
     speed: 4
     accelerationCurve:

@@ -21,7 +21,9 @@ namespace Pawn.Runtime.State
 
             if (moveInfo.IsMoving == false) return;
 
-            receiver.Enqueue(new MoveRequest(MoveType.Active, sprintSpeed * moveInfo.RawValue));
+            var velocity = sprintSpeed * moveInfo.RawValue;
+
+            receiver.Enqueue(new MoveRequest(MoveType.Active, velocity));
         }
 
         public override void Exit(IState nextState)

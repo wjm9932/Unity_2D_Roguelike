@@ -1,3 +1,16 @@
 {
-	"name": "Pawn.Data"
+    "name": "Pawn.Data",
+    "rootNamespace": "",
+    "references": [
+        "GUID:015c5e6d775a40b4188c3554b864bd5e"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

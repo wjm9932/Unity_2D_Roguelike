@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Kinematic.Data;
+using System;
 using UnityEngine;
 
 namespace Pawn.Data
@@ -12,7 +13,9 @@ namespace Pawn.Data
     public class PawnAssetDefinition : IPawnAssetDefinition
     {
         [SerializeField] private GameObject avatar;
+        [SerializeField] private ColliderInfo colliderInfo;
 
         public GameObject Avatar => avatar;
+        public ColliderInfo ColiderInfo => colliderInfo;
     }
 }
