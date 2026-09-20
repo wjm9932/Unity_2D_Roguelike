@@ -1,0 +1,16 @@
+{
+    "name": "Kinematic.Data",
+    "rootNamespace": "",
+    "references": [
+        "GUID:7e2ab17c59e99524ebd0fd399b6062f7"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

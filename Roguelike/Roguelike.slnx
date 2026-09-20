@@ -1,6 +1,7 @@
 ﻿<Solution>
   <Project Path="Pawn.Runtime.csproj" />
   <Project Path="Input.csproj" />
+  <Project Path="Kinematic.Runtime.csproj" />
   <Project Path="Spawn.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="SerializableDictionary.Editor.csproj" />
@@ -11,6 +12,9 @@
   <Project Path="Pawn.Interface.csproj" />
   <Project Path="SerializableDictionary.Runtime.csproj" />
   <Project Path="Game.Data.csproj" />
+  <Project Path="CustomAttributes.Editor.csproj" />
   <Project Path="Foundations.csproj" />
   <Project Path="Scene.csproj" />
+  <Project Path="CustomAttributes.Runtime.csproj" />
+  <Project Path="Kinematic.Data.csproj" />
 </Solution>
