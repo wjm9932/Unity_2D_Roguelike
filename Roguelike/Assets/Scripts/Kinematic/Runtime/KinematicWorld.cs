@@ -1,10 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using Kinematic.Data;
+using Kinematic.Runtime.Spatial;
+using System.Collections.Generic;
 
 namespace Kinematic.Runtime
 {
     public static partial class KinematicWorld
     {
         private static readonly KinematicSolver solver = new();
+
+        public static void Init(AABB bounds) => solver.Init(bounds);
 
         public static void Register(KinematicBody body) => solver.Register(body);
 
@@ -19,15 +23,20 @@ namespace Kinematic.Runtime
         {
             private const int MaxSolverIterationCount = 16;
 
-            // 추후 쿼드 트리로 전환하기 위해 미리 분리
-            private readonly List<KinematicBody> staticBodies = new();
+            private  QuadTree staticBodies;
             private readonly List<KinematicBody> dynamicBodies = new();
+            private readonly List<KinematicBody> queryResult = new();
+
+            internal void Init(AABB bounds)
+            {
+                staticBodies = new QuadTree(bounds);
+            }
 
             internal void Register(KinematicBody body)
             {
                 if (body.IsStatic)
                 {
-                    staticBodies.Add(body);
+                    staticBodies.Insert(body);
                 }
                 else
                 {
@@ -69,9 +78,11 @@ namespace Kinematic.Runtime
 
                 foreach (var dynamicBody in dynamicBodies)
                 {
-                    foreach(var staticBody in staticBodies)
+                    staticBodies.Query(dynamicBody.Bounds, queryResult);
+
+                    foreach (var staticBody in queryResult)
                     {
-                        if (!KinematicDetector.TryCollide(dynamicBody, staticBody, out var contact))
+                        if (!dynamicBody.TryCollide(staticBody, out var contact))
                         {
                             continue;
                         }
@@ -79,6 +90,8 @@ namespace Kinematic.Runtime
                         dynamicBody.ApplyCorrection(contact.SeparationMtv);
                         hasCollision = true;
                     }
+
+                    queryResult.Clear();
                 }
 
                 return hasCollision;
@@ -96,7 +109,7 @@ namespace Kinematic.Runtime
                     {
                         var bodyB = dynamicBodies[bodyBIndex];
 
-                        if (!KinematicDetector.TryCollide(bodyA, bodyB, out var contact))
+                        if (!KinematicBodyExtension.TryCollide(bodyA, bodyB, out var contact))
                         {
                             continue;
                         }

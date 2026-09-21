@@ -10,7 +10,6 @@ namespace Kinematic.Runtime
 
         public ColliderInfo Shape { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
-
         internal bool IsStatic { get; }
         internal AABB Bounds
         {

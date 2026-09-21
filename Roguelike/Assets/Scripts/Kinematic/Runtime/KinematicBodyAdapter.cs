@@ -27,7 +27,7 @@ namespace Kinematic.Runtime
         {
             Color previousColor = Gizmos.color;
             Gizmos.color = Color.green;
-
+    
             Vector3 center = transform.position + (Vector3)colliderInfo.Offset;
 
             switch (colliderInfo.Shape)

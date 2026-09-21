@@ -3,9 +3,9 @@ using UnityEngine;
 
 namespace Kinematic.Runtime
 {
-    internal static class KinematicDetector
+    internal static class KinematicBodyExtension
     {
-        internal static bool TryCollide(KinematicBody bodyA, KinematicBody bodyB, out Contact contact)
+        internal static bool TryCollide(this KinematicBody bodyA, KinematicBody bodyB, out Contact contact)
         {
             contact = default;
 
