@@ -21,7 +21,7 @@ namespace Kinematic.Runtime
             var worldStepSystem = new PlayerLoopSystem
             {
                 type = typeof(KinematicWorldStep),
-                updateDelegate = KinematicWorld.Solve
+                updateDelegate = KinematicWorld.Tick
             };
 
             if (!InsertAfterUpdate(ref playerLoop, worldStepSystem))

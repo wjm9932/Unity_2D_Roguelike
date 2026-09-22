@@ -25,7 +25,6 @@ namespace Kinematic.Runtime
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            Color previousColor = Gizmos.color;
             Gizmos.color = Color.green;
     
             Vector3 center = transform.position + (Vector3)colliderInfo.Offset;
@@ -43,8 +42,6 @@ namespace Kinematic.Runtime
                     Gizmos.DrawWireCube(center, size);
                     break;
             }
-
-            Gizmos.color = previousColor;
         }
 
         private static void DrawCircle(Vector3 center, float radius)

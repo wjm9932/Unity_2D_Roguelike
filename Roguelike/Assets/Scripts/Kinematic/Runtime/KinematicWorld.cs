@@ -1,6 +1,9 @@
 ﻿using Kinematic.Data;
 using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
+#if UNITY_EDITOR
+using UnityEngine;
+#endif
 
 namespace Kinematic.Runtime
 {
@@ -14,18 +17,25 @@ namespace Kinematic.Runtime
 
         public static void Unregister(KinematicBody body) => solver.Unregister(body);
 
-        internal static void Solve() => solver.Solve();
+        internal static void Tick() => solver.Solve();
+
+#if UNITY_EDITOR
+        internal static void DrawQuadTreeBounds() => solver.DrawQuadTreeBounds();
+#endif
     }
 
-    public partial class KinematicWorld
+    public static partial class KinematicWorld
     {
         private class KinematicSolver
         {
-            private const int MaxSolverIterationCount = 16;
-
-            private  QuadTree staticBodies;
+            private QuadTree staticBodies;
             private readonly List<KinematicBody> dynamicBodies = new();
             private readonly List<KinematicBody> queryResult = new();
+            private const int MaxSolverIterationCount = 16;
+
+#if UNITY_EDITOR
+            internal void DrawQuadTreeBounds() => staticBodies?.DrawBounds(dynamicBodies);
+#endif
 
             internal void Init(AABB bounds)
             {
@@ -109,7 +119,7 @@ namespace Kinematic.Runtime
                     {
                         var bodyB = dynamicBodies[bodyBIndex];
 
-                        if (!KinematicBodyExtension.TryCollide(bodyA, bodyB, out var contact))
+                        if (!bodyA.TryCollide(bodyB, out var contact))
                         {
                             continue;
                         }
@@ -134,4 +144,36 @@ namespace Kinematic.Runtime
             }
         }
     }
+
+#if UNITY_EDITOR
+    internal sealed class KinematicWorldDebugDrawer : MonoBehaviour
+    {
+        private static KinematicWorldDebugDrawer instance;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Initialize()
+        {
+            if (instance != null)
+            {
+                return;
+            }
+
+            var drawerObject = new GameObject(nameof(KinematicWorldDebugDrawer))
+            {
+                hideFlags = HideFlags.DontSave
+            };
+
+            DontDestroyOnLoad(drawerObject);
+            instance = drawerObject.AddComponent<KinematicWorldDebugDrawer>();
+        }
+
+        private void OnDrawGizmos()
+        {
+            if (Application.isPlaying)
+            {
+                KinematicWorld.DrawQuadTreeBounds();
+            }
+        }
+    }
+#endif
 }

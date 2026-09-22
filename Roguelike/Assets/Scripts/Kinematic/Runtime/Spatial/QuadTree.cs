@@ -6,7 +6,6 @@ namespace Kinematic.Runtime.Spatial
 {
     internal sealed class QuadTree
     {
-
         private sealed class Node
         {
             internal AABB Bounds { get; }
@@ -21,7 +20,7 @@ namespace Kinematic.Runtime.Spatial
             }
         }
 
-        private const int maxPerNode = 8;
+        private const int maxPerNode = 1;
         private const int maxDepth = 6;
         private Node root;
 
@@ -128,6 +127,7 @@ namespace Kinematic.Runtime.Spatial
             // 4 사분면
             node.children[3] = new Node(new AABB(new Vector2(center.x, min.y), new Vector2(max.x, center.y)));
         }
+
         private static void Redistribute(Node node, int depth)
         {
             for (var bodyIndex = 0; bodyIndex < node.bodies.Count; bodyIndex++)
@@ -174,5 +174,45 @@ namespace Kinematic.Runtime.Spatial
 
             return Remove(node.children[childIndex], body, bodyBounds);
         }
+
+#if UNITY_EDITOR
+        internal void DrawBounds(IReadOnlyList<KinematicBody> dynamicBodies)
+        {
+            DrawNodeBounds(root, dynamicBodies);
+        }
+
+        private static void DrawNodeBounds(Node node, IReadOnlyList<KinematicBody> dynamicBodies)
+        {
+            var center = (node.Bounds.Min + node.Bounds.Max) * 0.5f;
+            var size = node.Bounds.Max - node.Bounds.Min;
+            var color = OverlapsAnyDynamicBody(node, dynamicBodies) ? Color.red : new Color(0.15f, 0.05f, 0.05f, 0.45f);
+
+            Gizmos.color = color;
+            Gizmos.DrawWireCube(center, size);
+
+            if (node.IsLeaf)
+            {
+                return;
+            }
+
+            foreach (var child in node.children)
+            {
+                DrawNodeBounds(child, dynamicBodies);
+            }
+        }
+
+        private static bool OverlapsAnyDynamicBody(Node node, IReadOnlyList<KinematicBody> dynamicBodies)
+        {
+            foreach (var body in dynamicBodies)
+            {
+                if (node.Bounds.Overlaps(body.Bounds))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+#endif
     }
 }
