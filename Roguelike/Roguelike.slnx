@@ -1,8 +1,8 @@
 ﻿<Solution>
   <Project Path="Kinematic.Data.csproj" />
+  <Project Path="Kinematic.Runtime.csproj" />
   <Project Path="Pawn.Runtime.csproj" />
   <Project Path="Input.csproj" />
-  <Project Path="Kinematic.Runtime.csproj" />
   <Project Path="Spawn.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="SerializableDictionary.Editor.csproj" />

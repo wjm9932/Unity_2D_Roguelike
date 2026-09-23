@@ -13,6 +13,7 @@ namespace Kinematic.Data
     public readonly struct Contact
     {
         public float PenetrationDepth { get; }
+        // A와B의 충돌 정보를 저장할 때 항상 B->A 방향으로 Normal을 구한다.
         public Vector2 SeparationNormal { get; }
         public Vector2 SeparationMtv => SeparationNormal * PenetrationDepth;
 

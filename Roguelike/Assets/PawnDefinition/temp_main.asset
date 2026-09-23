@@ -20,7 +20,7 @@ MonoBehaviour:
       radius: 0.5
       halfExtents: {x: 0, y: 0}
   pawnStatsDefinition:
-    speed: 4
+    speed: 400
     accelerationCurve:
       serializedVersion: 2
       m_Curve:

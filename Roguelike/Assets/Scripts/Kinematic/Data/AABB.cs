@@ -22,6 +22,14 @@ namespace Kinematic.Data
             return new AABB(center - extents, center + extents);
         }
 
+        // 쿼드 트리 조회용 이동경로 AABB
+        public AABB GetSweptBounds(Vector2 moveDelta)
+        {
+            var movedMin = Min + moveDelta;
+            var movedMax = Max + moveDelta;
+
+            return new AABB(Vector2.Min(Min, movedMin), Vector2.Max(Max, movedMax));
+        }
 
         public bool Overlaps(in AABB other)
         {

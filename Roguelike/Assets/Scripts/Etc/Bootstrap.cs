@@ -26,7 +26,7 @@ public static class Bootstrap
     {
         await StaticDataRepository.LoadAsync();
         
-        KinematicWorld.Init(new AABB(new Vector2(-10f, -10f), new Vector2(10f, 10f)));
+        KinematicWorld.Init(new AABB(new Vector2(-10f, -10f), new Vector2(10f, 10f)), useSweep: true);
 
         await Game.Runtime.Game.Instance.ChangeScene(SceneId.Battle1);
     }

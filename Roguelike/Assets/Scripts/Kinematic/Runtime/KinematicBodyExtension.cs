@@ -7,30 +7,72 @@ namespace Kinematic.Runtime
     {
         internal static bool TryCollide(this KinematicBody bodyA, KinematicBody bodyB, out Contact contact)
         {
+            return TryCollide(bodyA.Center, bodyA.Shape, bodyB.Center, bodyB.Shape, out contact);
+        }
+
+        internal static bool TryCollide(Vector2 centerA, in ColliderInfo shapeA, Vector2 centerB, in ColliderInfo shapeB, out Contact contact)
+        {
             contact = default;
 
-            return (bodyA.Shape.Shape, bodyB.Shape.Shape) switch
+            return (shapeA.Shape, shapeB.Shape) switch
             {
                 (Shape.Circle, Shape.Circle) =>
-                    TryCircleCircle(bodyA, bodyB, out contact),
+                    TryCircleCircle(centerA, shapeA.Radius, centerB, shapeB.Radius, out contact),
 
                 (Shape.Circle, Shape.Box) =>
-                    TryCircleBox(bodyA, bodyB, out contact),
+                    TryCircleBox(centerA, shapeA.Radius, centerB, shapeB.HalfExtents, out contact),
 
                 (Shape.Box, Shape.Circle) =>
-                    TryBoxCircle(bodyA, bodyB, out contact),
+                    TryBoxCircle(centerA, shapeA.HalfExtents, centerB, shapeB.Radius, out contact),
+
+                (Shape.Box, Shape.Box) =>
+                    TryBoxBox(centerA, shapeA.HalfExtents, centerB, shapeB.HalfExtents, out contact),
 
                 _ => false
             };
         }
 
-        private static bool TryCircleCircle(in KinematicBody circleA, in KinematicBody circleB, out Contact contact)
+        private static bool TryBoxBox(Vector2 centerA, Vector2 halfExtentsA, Vector2 centerB, Vector2 halfExtentsB, out Contact contact)
         {
             contact = default;
 
-            var delta = circleA.Center - circleB.Center;
+            var delta = centerA - centerB;
+            var combinedHalfExtents = halfExtentsA + halfExtentsB;
+            var overlapX = combinedHalfExtents.x - Mathf.Abs(delta.x);
 
-            var radiusSum = circleA.Shape.Radius + circleB.Shape.Radius;
+            if (overlapX <= 0f)
+            {
+                return false;
+            }
+
+            var overlapY = combinedHalfExtents.y - Mathf.Abs(delta.y);
+
+            if (overlapY <= 0f)
+            {
+                return false;
+            }
+
+            if (overlapX < overlapY)
+            {
+                var normalX = delta.x < 0f ? -1f : 1f;
+                contact = new Contact(new Vector2(normalX, 0f), overlapX);
+            }
+            else
+            {
+                var normalY = delta.y < 0f ? -1f : 1f;
+                contact = new Contact(new Vector2(0f, normalY), overlapY);
+            }
+
+            return true;
+        }
+
+        private static bool TryCircleCircle(Vector2 centerA, float radiusA, Vector2 centerB, float radiusB, out Contact contact)
+        {
+            contact = default;
+
+            var delta = centerA - centerB;
+
+            var radiusSum = radiusA + radiusB;
             var distanceSquared = delta.sqrMagnitude;
 
             if (distanceSquared >= radiusSum * radiusSum)
@@ -47,11 +89,11 @@ namespace Kinematic.Runtime
             return true;
         }
 
-        private static bool TryBoxCircle(KinematicBody box, KinematicBody circle, out Contact contact)
+        private static bool TryBoxCircle(Vector2 boxCenter, Vector2 boxHalfExtents, Vector2 circleCenter, float circleRadius, out Contact contact)
         {
             contact = default;
 
-            if (!TryCircleBox(circle, box, out Contact circleContact))
+            if (!TryCircleBox(circleCenter, circleRadius, boxCenter, boxHalfExtents, out var circleContact))
             {
                 return false;
             }
@@ -61,14 +103,9 @@ namespace Kinematic.Runtime
             return true;
         }
 
-        private static bool TryCircleBox(in KinematicBody circle, in KinematicBody box, out Contact contact)
+        private static bool TryCircleBox(Vector2 circleCenter, float radius, Vector2 boxCenter, Vector2 halfExtents, out Contact contact)
         {
             contact = default;
-
-            var circleCenter = circle.Center;
-            var boxCenter = box.Center;
-            var halfExtents = box.Shape.HalfExtents;
-            var radius = circle.Shape.Radius;
 
             var boxMin = boxCenter - halfExtents;
             var boxMax = boxCenter + halfExtents;
