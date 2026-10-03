@@ -11,13 +11,42 @@ namespace Kinematic.Runtime
 
         private readonly List<KinematicBody> dynamicBodies = new();
         private readonly List<KinematicBody> queryResult = new();
+        private readonly List<SweepBodyState> sweepBodyStates = new();
+        private readonly List<SweepContact> sweepContacts = new();
         private QuadTree staticBodies;
         private bool useSweep;
 
         private const int MaxSolverIterationCount = 16;
         private const int MaxSlideIterationCount = 4;
-        private const float SkinWidth = 0.001f;
+        private const float MinMoveDistance = 0.000001f;
         private const float SweepDirectionEpsilon = 0.000001f;
+
+        private struct SweepBodyState
+        {
+            internal Vector2 RemainingMoveDelta { get; set;  }
+            internal int SlideIterationCount { get; set; }
+            internal bool IsMovementComplete => RemainingMoveDelta.sqrMagnitude <= MinMoveDistance * MinMoveDistance;
+
+            internal SweepBodyState(Vector2 moveDelta)
+            {
+                RemainingMoveDelta = moveDelta;
+                SlideIterationCount = 0;
+            }
+        }
+
+        private readonly struct SweepContact
+        {
+            internal int BodyAIndex { get; }
+            internal int BodyBIndex { get; }
+            internal Vector2 Normal { get; }
+
+            internal SweepContact(int bodyAIndex, int bodyBIndex, Vector2 normal)
+            {
+                BodyAIndex = bodyAIndex;
+                BodyBIndex = bodyBIndex;
+                Normal = normal;
+            }
+        }
 
 #if UNITY_EDITOR
         internal void DrawQuadTreeBounds() => staticBodies?.DrawBounds(dynamicBodies);
@@ -143,79 +172,159 @@ namespace Kinematic.Runtime
             hasHit = true;
         }
 
-        private bool SweepShapeCast(KinematicBody body, Vector2 moveDelta, out ShapeCastHit hit)
+        private bool SweepShapeCast(out float closestFraction)
         {
-            hit = default;
+            sweepContacts.Clear();
+            closestFraction = float.PositiveInfinity;
 
-            if (staticBodies == null || moveDelta.sqrMagnitude <= Mathf.Epsilon)
+            if (staticBodies == null)
             {
                 return false;
             }
 
-            var hasHit = false;
-            var closestFraction = float.PositiveInfinity;
-            var sweptBounds = body.Bounds.GetSweptBounds(moveDelta);
-
-            staticBodies.Query(sweptBounds, queryResult);
-
-            foreach (var candidate in queryResult)
+            for (var bodyAIndex = 0; bodyAIndex < dynamicBodies.Count; bodyAIndex++)
             {
-                if (candidate == body || KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
+                var bodyA = dynamicBodies[bodyAIndex];
+                var stateA = sweepBodyStates[bodyAIndex];
+                var moveDeltaA = stateA.IsMovementComplete ? Vector2.zero : stateA.RemainingMoveDelta;
+                var sweptBoundsA = bodyA.Bounds.GetSweptBounds(moveDeltaA);
+
+                // 남은 이동량이 없다면 정적 오브젝트와 충돌 검사를 하지 않는다.
+                if (!stateA.IsMovementComplete)
                 {
-                    continue;
+                    staticBodies.Query(sweptBoundsA, queryResult);
+
+                    foreach (var candidate in queryResult)
+                    {
+                        TryUpdateClosestSweepHit(bodyAIndex, -1, candidate, moveDeltaA, ref closestFraction);
+                    }
                 }
 
-                // 스침 또는 초기 겹침에서 빠져나가는 접촉은 가장 가까운 Hit를 선택하기 전에 제외한다.
-                if (candidateHit.IsGrazing || Vector2.Dot(moveDelta, candidateHit.Normal) >= -SweepDirectionEpsilon || candidateHit.Fraction >= closestFraction)
+                for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
-                    continue;
-                }
+                    var stateB = sweepBodyStates[bodyBIndex];
+                    // 오브젝트 둘 다 남은 이동량이 없다면 건너 뛴다.
+                    if (stateA.IsMovementComplete && stateB.IsMovementComplete)
+                    {
+                        continue;
+                    }
 
-                closestFraction = candidateHit.Fraction;
-                hit = candidateHit;
-                hasHit = true;
+                    var bodyB = dynamicBodies[bodyBIndex];
+                    var moveDeltaB = stateB.IsMovementComplete ? Vector2.zero : stateB.RemainingMoveDelta;
+
+                    // 양쪽의 이동 경로를 비교해야 정지한 A 쪽으로 이동하는 B도 검출된다.
+                    if (!sweptBoundsA.Overlaps(bodyB.Bounds.GetSweptBounds(moveDeltaB)))
+                    {
+                        continue;
+                    }
+
+                    // bodyA의 상대 속도
+                    var relativeMoveDelta = moveDeltaA - moveDeltaB;
+                    TryUpdateClosestSweepHit(bodyAIndex, bodyBIndex, bodyB, relativeMoveDelta, ref closestFraction);
+                }
             }
 
-            return hasHit;
+            return sweepContacts.Count > 0;
         }
 
-        private void Sweep(KinematicBody body, Vector2 moveDelta)
+        private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
-            var remainingMoveDelta = moveDelta;
-
-            // 복잡한 코너에서 해결이 덜 됐으면 남은 움직임을 포기하고 안전한 위치에 멈추게
-            for (var iteration = 0; iteration < MaxSlideIterationCount; iteration++)
+            var body = dynamicBodies[bodyAIndex];
+            if (KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
             {
-                var sqrDistance = remainingMoveDelta.sqrMagnitude;
+                return;
+            }
 
-                if (sqrDistance <= Mathf.Epsilon * Mathf.Epsilon)
+            // 스침 또는 초기 겹침에서 빠져나가는 접촉은 가장 가까운 Hit을 선택하기 전에 제외한다.
+            if (candidateHit.IsGrazing || Vector2.Dot(moveDelta, candidateHit.Normal) >= -SweepDirectionEpsilon || candidateHit.Fraction > closestFraction)
+            {
+                return;
+            }
+
+            if (candidateHit.Fraction < closestFraction)
+            {
+                closestFraction = candidateHit.Fraction;
+                sweepContacts.Clear();
+            }
+
+            // 동적 쌍은 상대 좌표계로 cast하므로 월드 접촉점 대신 법선만 저장한다.
+            // 한 프레임에 같이 처리하기 위해 같은 충돌 시점의 접촉을 모두 저장한다.
+            sweepContacts.Add(new SweepContact(bodyAIndex, bodyBIndex, candidateHit.Normal));
+        }
+
+        private void Sweep()
+        {
+            // 충돌 처리 횟수는 바디별로 제한하고, 다른 바디의 남은 이동은 계속 처리한다.
+            while (true)
+            {
+                if (SweepShapeCast(out var fraction) == false)
                 {
+                    ApplySweptMovements(1f);
                     return;
                 }
 
-                var distance = remainingMoveDelta.magnitude;
+                // 모든 바디를 바디들 중 가장 이른 충돌 시점까지 각자의 이동 경로를 따라 이동시킨다.
+                ApplySweptMovements(fraction);
 
-                if (SweepShapeCast(body, remainingMoveDelta, out var hit) == false)
+                foreach (var contact in sweepContacts)
                 {
-                    body.ApplyMovement(remainingMoveDelta);
-                    return;
+                    SlideSweepBody(contact.BodyAIndex, contact.Normal);
+
+                    if (contact.BodyBIndex >= 0)
+                    {
+                        // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
+                        SlideSweepBody(contact.BodyBIndex, -contact.Normal);
+                    }
+                }
+            }
+        }
+
+        private void SlideSweepBody(int bodyIndex, Vector2 normal)
+        {
+            var state = sweepBodyStates[bodyIndex];
+            if (state.IsMovementComplete)
+            {
+                return;
+            }
+
+            // 한도에 도달한 바디는 표면 밖으로 이동하더라도 일괄적으로 남은 이동을 포기한다.
+            if (state.SlideIterationCount >= MaxSlideIterationCount)
+            {
+                state.RemainingMoveDelta = Vector2.zero;
+                sweepBodyStates[bodyIndex] = state;
+                return;
+            }
+
+            // 남은 이동량을 hit.Normal 벡터에 투영한다.
+            // 남은 이동량을 법선 방향으로 투영한다 = 남는 이동량(벡터) 중에 hit.Normal 방향 성분으로 이루어진 부분의 크기를 부호가 있는 스칼라 값으로 구한다. 이 부호를 가지는 크기를 통해 투영 벡터를 구할 수 있다.(hit.Normal 방향 or -hit.Normal 방향)
+            var intoSurface = Vector2.Dot(state.RemainingMoveDelta, normal);
+            if (intoSurface < 0f)
+            {
+                state.SlideIterationCount++;
+                // 내적 값이 음수이기 때문에 hit.Normal과 반대 방향인 투영 벡터가 만들어진다. 즉, 법선 반대 방향인 충돌 표면 안쪽을 향하는 벡터
+                // hit.Normal * intoSurface = 남은 이동량 중 법선 반대 방향인 충돌 표면 안쪽을 향하는 성분만 가진 벡터(intoSurface가 음수이기 때문) = 투영 벡터
+                // remainMoveDelta 성분에서 hit.Normal과 반대 방향 성분 즉, 충돌하려는 방향 성분을 제거한다.
+                state.RemainingMoveDelta -= normal * intoSurface;
+                sweepBodyStates[bodyIndex] = state;
+            }
+        }
+
+        private void ApplySweptMovements(float fraction)
+        {
+            for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
+            {
+                var state = sweepBodyStates[bodyIndex];
+                if (state.IsMovementComplete)
+                {
+                    continue;
                 }
 
                 // 부딪히지 않는 위치까지만 이동
-                body.ApplyMovement(remainingMoveDelta * hit.Fraction);
-
+                dynamicBodies[bodyIndex].ApplyMovement(state.RemainingMoveDelta * fraction);
                 // 이동하고 남은 이동량 갱신
-                remainingMoveDelta *= 1f - hit.Fraction;
-                // 남은 이동량을 hit.Normal 벡터에 투영한다.
-                // 남은 이동량을 법선 방향으로 투영한다 = 남는 이동량(벡터) 중에 hit.Normal 방향 성분으로 이루어진 부분의 크기를 부호가 있는 스칼라 값으로 구한다. 이 부호를 가지는 크기를 통해 투영 벡터를 구할 수 있다.(hit.Normal 방향 or -hit.Normal 방향)
-                var intoSurface = Vector2.Dot(remainingMoveDelta, hit.Normal);
-                if (intoSurface < 0f)
-                {
-                    // 내적 값이 음수이기 때문에 hit.Normal과 반대 방향인 투영 벡터가 만들어진다. 즉, 법선 반대 방향인 충돌 표면 안쪽을 향하는 벡터
-                    // hit.Normal * intoSurface = 남은 이동량 중 법선 반대 방향인 충돌 표면 안쪽을 향하는 성분만 가진 벡터(intoSurface가 음수이기 때문) = 투영 벡터
-                    // remainMoveDelta 성분에서 hit.Normal과 반대 방향 성분 즉, 충돌하려는 방향 성분을 제거한다.
-                    remainingMoveDelta -= (hit.Normal * intoSurface);
-                }
+                state.RemainingMoveDelta *= (1f - fraction);
+                // 상태 갱신
+                sweepBodyStates[bodyIndex] = state;
             }
         }
 
@@ -225,18 +334,9 @@ namespace Kinematic.Runtime
         {
             if (useSweep)
             {
-                // 혹시 모를 Teleport로 인한 또는 sweep 시작전 충돌 상태 solving
-                // dynamic이 teleport로 dynamic과 충돌 상태일 수 있는데 이 경우는 지금은 일단 무시
-
-                // 일반적인 sweep만 수행했을 때는 겹쳐져있는 상태로 solving이 끝날 수 없음
-                // Sweep에서 MaxSlideIterationCount를 통해 남은 이동량을 포기하더라도 안전한곳에서 멈추게 구현했기 때문
-                ResolveInitialStaticOverlaps();
-                // 일단 아직 dynamic vs static만 검사하는 방향
-                // 추후 상대속도 이용해서 sweep도 dynamic vs dynamic 검사 구현할 예정
+                // Fraction = 0인 cast는 기존 겹침을 해소하지 않으므로 먼저 MTV로 분리한다.
+                ResolveDiscreteCollisions();
                 SolveSweptMovements();
-                // SolveSweptMovements 자체만으로는 처음부터 겹쳐있으면 Discrete한 MTV와 달리 겹침을 해소하지 않는다
-                // Cast에서 Fraction = 0으로 겹쳐있다고 알려주지만 Fraction이 0이면 단순 움직이만 않을 뿐 겹침을 해소해 주지는 않는다
-                // 그래서 처음부터 겹쳐있을 경우 해소하기 위해 ResolveInitialStaticOverlaps() 이거 호출해야함
             }
             else
             {
@@ -247,23 +347,17 @@ namespace Kinematic.Runtime
             SyncDynamicTransforms();
         }
 
-        private void ResolveInitialStaticOverlaps()
-        {
-            for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
-            {
-                if (!SolveDynamicStaticCollisions())
-                {
-                    break;
-                }
-            }
-        }
-
         private void SolveSweptMovements()
         {
             foreach (var body in dynamicBodies)
             {
-                Sweep(body, body.ConsumeDelta());
+                sweepBodyStates.Add(new SweepBodyState(body.ConsumeDelta()));
             }
+
+            Sweep();
+
+            sweepBodyStates.Clear();
+            sweepContacts.Clear();
         }
 
         private void SolveDiscreteMovements()
