@@ -4,8 +4,10 @@ using UnityEngine;
 
 namespace Kinematic.Runtime.Spatial
 {
+    // 구조체로 바꾸기
     internal sealed class QuadTree
     {
+        // 구조체로 바꾸기
         private sealed class Node
         {
             internal AABB Bounds { get; }
@@ -29,7 +31,12 @@ namespace Kinematic.Runtime.Spatial
             root = new Node(bounds);
         }
 
-        internal void Query(in AABB queryBounds, List<KinematicBody> results) => Query(root, queryBounds, results);
+        internal void Query(in AABB queryBounds, List<KinematicBody> results)
+        {
+            results.Clear();
+
+            Query(root, queryBounds, results);
+        }
 
         private static void Query(Node node, in AABB queryBounds, List<KinematicBody> results)
         {
