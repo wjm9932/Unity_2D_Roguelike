@@ -1,5 +1,4 @@
 using Kinematic.Data;
-using UnityEngine;
 
 namespace Kinematic.Runtime
 {
@@ -21,11 +20,11 @@ namespace Kinematic.Runtime
     }
 
 #if UNITY_EDITOR
-    internal sealed class KinematicWorldDebugDrawer : MonoBehaviour
+    internal sealed class KinematicWorldDebugDrawer : UnityEngine.MonoBehaviour
     {
         private static KinematicWorldDebugDrawer instance;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
             if (instance != null)
@@ -33,9 +32,9 @@ namespace Kinematic.Runtime
                 return;
             }
 
-            var drawerObject = new GameObject(nameof(KinematicWorldDebugDrawer))
+            var drawerObject = new UnityEngine.GameObject(nameof(KinematicWorldDebugDrawer))
             {
-                hideFlags = HideFlags.DontSave
+                hideFlags = UnityEngine.HideFlags.DontSave
             };
 
             DontDestroyOnLoad(drawerObject);
@@ -44,7 +43,7 @@ namespace Kinematic.Runtime
 
         private void OnDrawGizmos()
         {
-            if (Application.isPlaying)
+            if (UnityEngine.Application.isPlaying)
             {
                 KinematicWorld.DrawQuadTreeBounds();
             }

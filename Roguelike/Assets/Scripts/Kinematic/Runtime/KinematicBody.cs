@@ -9,6 +9,27 @@ namespace Kinematic.Runtime
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
 
+#if UNITY_EDITOR
+        private Vector2 debugStartPosition;
+        private Vector2 debugRequestedMoveDelta;
+
+        private void DrawMovementDebug()
+        {
+            var center = (Vector3)Center;
+            DrawMovementDirection(center, debugRequestedMoveDelta, Color.yellow);
+            DrawMovementDirection(center, anchorPosition - debugStartPosition, Color.cyan);
+        }
+
+        private static void DrawMovementDirection(Vector3 center, Vector2 moveDelta, Color color)
+        {
+            var distance = moveDelta.magnitude;
+            if (distance <= Mathf.Epsilon) return;
+
+            var direction = moveDelta / distance;
+            Debug.DrawLine(center, center + (Vector3)(direction * 2f), color, 0f, false);
+        }
+#endif
+
         public ColliderInfo Shape { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
         internal bool IsStatic { get; }
@@ -52,8 +73,12 @@ namespace Kinematic.Runtime
             pendingMoveDelta = Vector2.zero;
         }
 
-        internal Vector2 ConsumeMoveDelta()
+        internal Vector2 ConsumeDelta()
         {
+#if UNITY_EDITOR
+            debugStartPosition = anchorPosition;
+            debugRequestedMoveDelta = pendingMoveDelta;
+#endif
             var moveDelta = pendingMoveDelta;
             pendingMoveDelta = Vector2.zero;
             return moveDelta;
@@ -63,6 +88,13 @@ namespace Kinematic.Runtime
 
         internal void ApplyMovement(Vector2 delta) => anchorPosition += delta;
 
-        internal void SyncTransform() => target.position = anchorPosition;
+        internal void SyncTransform()
+        {
+            target.position = anchorPosition;
+
+#if UNITY_EDITOR
+            DrawMovementDebug();
+#endif
+        }
     }
 }
