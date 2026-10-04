@@ -1,9 +1,8 @@
 {
-    "name": "Kinematic.Runtime",
+    "name": "Kinematic.Interface",
     "rootNamespace": "",
     "references": [
-        "GUID:015c5e6d775a40b4188c3554b864bd5e",
-        "GUID:868121fc5e8e47641944421a9ba1c481"
+        "GUID:015c5e6d775a40b4188c3554b864bd5e"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

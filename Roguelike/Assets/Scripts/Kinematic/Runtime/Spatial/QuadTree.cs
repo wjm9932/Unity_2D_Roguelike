@@ -1,11 +1,12 @@
 ﻿using Kinematic.Data;
+using Kinematic.Interface;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kinematic.Runtime.Spatial
 {
     // 구조체로 바꾸기
-    internal sealed class QuadTree
+    internal sealed class QuadTree : IQueryOnlyQuadTree<KinematicBody>
     {
         // 구조체로 바꾸기
         private sealed class Node
@@ -26,12 +27,12 @@ namespace Kinematic.Runtime.Spatial
         private const int maxDepth = 6;
         private Node root;
 
-        internal QuadTree(AABB bounds)
+        internal QuadTree(in AABB bounds)
         {
             root = new Node(bounds);
         }
 
-        internal void Query(in AABB queryBounds, List<KinematicBody> results)
+        public void Query(in AABB queryBounds, List<KinematicBody> results)
         {
             results.Clear();
 
@@ -180,6 +181,11 @@ namespace Kinematic.Runtime.Spatial
             }
 
             return Remove(node.children[childIndex], body, bodyBounds);
+        }
+
+        internal void Clear()
+        {
+            root = null;
         }
 
 #if UNITY_EDITOR
