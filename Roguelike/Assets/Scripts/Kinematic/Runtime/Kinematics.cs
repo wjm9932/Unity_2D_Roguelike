@@ -1,0 +1,13 @@
+using UnityEngine;
+
+namespace Kinematic.Runtime
+{
+    public static class Kinematics
+    {
+        public static bool CircleCast(Vector2 origin, float radius, Vector2 distance, out ShapeCastHit hit, KinematicBody ignoredBody = null) => KinematicSimulation.Instance.Cast.CircleCast(origin, radius, distance, ignoredBody, out hit);
+
+        public static bool BoxCast(Vector2 origin, Vector2 halfExtents, Vector2 distance, out ShapeCastHit hit, KinematicBody ignoredBody = null) => KinematicSimulation.Instance.Cast.BoxCast(origin, halfExtents, distance, ignoredBody, out hit);
+
+        public static bool ShapeCast(KinematicBody body, Vector2 distance, out ShapeCastHit hit) => KinematicSimulation.Instance.Cast.ShapeCast(body, distance, out hit);
+    }
+}

@@ -10,15 +10,13 @@ namespace Pawn.Runtime
         public IPawnController PawnController => pawnController;
         public IPawnStatsBehaviour PawnStatsBehaviour => pawnStatsBehaviour;
         public IPawnBehaviour PawnBehaviour => pawnBehaviour;
-        public IMoveRequestReceiver MoveRequestReceiver => pawnMovement;
 
         private IPawnController pawnController;
         private IPawnStatsBehaviour pawnStatsBehaviour;
         private IPawnBehaviour pawnBehaviour;
-
         private IPawnMovement pawnMovement;
 
-        public Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMovement movement)
+        internal Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMovement movement)
         {
             pawnController = controller;
             pawnStatsBehaviour = statsBehaviour;
@@ -43,6 +41,7 @@ namespace Pawn.Runtime
 
         public void Dispose()
         {
+            pawnMovement.Dispose();
         }
     }
 }
