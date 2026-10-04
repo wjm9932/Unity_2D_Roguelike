@@ -69,7 +69,7 @@ namespace Kinematic.Runtime
             Debug.Assert(!IsStatic, $"Request Teleport to static body: {target.name}");
 
             // 텔레포트 이동도 solve 시점과 통일하기 위해서 즉시 적용하지 않는다.
-            // 즉시 적용 시 cast를 했을 때 Teleport와 cast 순서에 따라서 cast가 검출되거나 검출되지 않게되어 일관성이 없고 cast 결과가 코드 순서에 영향을 받게 된다.
+            // Teleport와 Cast의 호출 순서가 조회 결과에 영향을 주지 않도록 Solve 시점에 일반 이동과 함께 일괄 적용한다.
             pendingTeleportPosition = position;
         }
 
