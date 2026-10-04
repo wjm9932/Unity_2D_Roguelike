@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace Kinematic.Runtime
 {
+    // TODO: Sweep, Discrete가 Solver 하나에 묶여있다. Sweep, Discrete 클래스로 각각 분리하자
     internal sealed class KinematicSolver
     {
         internal static KinematicSolver Instance { get; } = new();
@@ -26,7 +27,7 @@ namespace Kinematic.Runtime
         {
             internal Vector2 RemainingMoveDelta { get; set;  }
             internal int SlideIterationCount { get; set; }
-            internal bool IsMovementComplete => RemainingMoveDelta.sqrMagnitude <= MinMoveDistance * MinMoveDistance;
+            internal bool HasMoveDelta => RemainingMoveDelta.sqrMagnitude > MinMoveDistance * MinMoveDistance;
 
             internal SweepBodyState(Vector2 moveDelta)
             {
@@ -189,11 +190,11 @@ namespace Kinematic.Runtime
             {
                 var bodyA = dynamicBodies[bodyAIndex];
                 var stateA = sweepBodyStates[bodyAIndex];
-                var moveDeltaA = stateA.IsMovementComplete ? Vector2.zero : stateA.RemainingMoveDelta;
+                var moveDeltaA = stateA.HasMoveDelta ? stateA.RemainingMoveDelta : Vector2.zero;
                 var sweptBoundsA = bodyA.Bounds.GetSweptBounds(moveDeltaA);
 
                 // 남은 이동량이 없다면 정적 오브젝트와 충돌 검사를 하지 않는다.
-                if (!stateA.IsMovementComplete)
+                if (stateA.HasMoveDelta)
                 {
                     staticBodies.Query(sweptBoundsA, queryResult);
 
@@ -207,13 +208,13 @@ namespace Kinematic.Runtime
                 {
                     var stateB = sweepBodyStates[bodyBIndex];
                     // 오브젝트 둘 다 남은 이동량이 없다면 건너 뛴다.
-                    if (stateA.IsMovementComplete && stateB.IsMovementComplete)
+                    if (stateA.HasMoveDelta == false && stateB.HasMoveDelta == false)
                     {
                         continue;
                     }
 
                     var bodyB = dynamicBodies[bodyBIndex];
-                    var moveDeltaB = stateB.IsMovementComplete ? Vector2.zero : stateB.RemainingMoveDelta;
+                    var moveDeltaB = stateB.HasMoveDelta ? stateB.RemainingMoveDelta : Vector2.zero;
 
                     // 양쪽의 이동 경로를 비교해야 정지한 A 쪽으로 이동하는 B도 검출된다.
                     if (!sweptBoundsA.Overlaps(bodyB.Bounds.GetSweptBounds(moveDeltaB)))
@@ -285,7 +286,7 @@ namespace Kinematic.Runtime
         private void SlideSweepBody(int bodyIndex, Vector2 normal)
         {
             var state = sweepBodyStates[bodyIndex];
-            if (state.IsMovementComplete)
+            if (state.HasMoveDelta == false)
             {
                 return;
             }
@@ -317,7 +318,7 @@ namespace Kinematic.Runtime
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
                 var state = sweepBodyStates[bodyIndex];
-                if (state.IsMovementComplete)
+                if (state.HasMoveDelta == false)
                 {
                     continue;
                 }
@@ -335,16 +336,18 @@ namespace Kinematic.Runtime
         // 일단 sweep 먼저 구현하고 나중에 생각하자
         internal void Solve()
         {
+            // Teleport 요청이 있다면 Teleport 적용
+            HandleTeleport();
+
+            // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
+            ResolveDiscreteCollisions();
+
             if (useSweep)
             {
-                // Fraction = 0인 cast는 기존 겹침을 해소하지 않으므로 먼저 MTV로 분리한다.
-                ResolveDiscreteCollisions();
                 SolveSweptMovements();
             }
             else
             {
-                // 기존 겹침은 이동으로 생긴 충돌과 구분해서 먼저 분리한다.
-                ResolveDiscreteCollisions();
                 SolveDiscreteMovements();
                 ResolveDiscreteCollisions(useMovementDeltas: true);
                 discreteMoveDeltas.Clear();
@@ -353,11 +356,19 @@ namespace Kinematic.Runtime
             SyncDynamicTransforms();
         }
 
+        private void HandleTeleport()
+        {
+            foreach (var body in dynamicBodies)
+            {
+                body.ApplyTeleport();
+            }
+        }
+
         private void SolveSweptMovements()
         {
             foreach (var body in dynamicBodies)
             {
-                sweepBodyStates.Add(new SweepBodyState(body.ConsumeDelta()));
+                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta()));
             }
 
             Sweep();
@@ -370,7 +381,7 @@ namespace Kinematic.Runtime
         {
             foreach (var body in dynamicBodies)
             {
-                var moveDelta = body.ConsumeDelta();
+                var moveDelta = body.ConsumeMoveDelta();
                 discreteMoveDeltas.Add(moveDelta);
                 body.ApplyMovement(moveDelta);
             }

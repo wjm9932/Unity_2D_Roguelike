@@ -1,5 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Game.Data;
+using Kinematic.Data;
+using Kinematic.Runtime;
 using Scene;
 using UnityEngine;
 
@@ -23,6 +25,9 @@ public static class Bootstrap
     private static async UniTask LoadAsync()
     {
         await StaticDataRepository.LoadAsync();
+
+        // 이벤트로 Stage Loaded 이벤트 뿌리기 전까지만 여기서 초기화
+        KinematicWorld.Init(new AABB(new Vector2(-10f, -10f), new Vector2(10f, 10f)), useSweep: false);
 
         await Game.Runtime.Game.Instance.ChangeScene(SceneId.Battle1);
     }

@@ -8,6 +8,7 @@ namespace Kinematic.Runtime
         private readonly Transform target;
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
+        private Vector2? pendingTeleportPosition;
 
 #if UNITY_EDITOR
         private Vector2 debugStartPosition;
@@ -59,21 +60,28 @@ namespace Kinematic.Runtime
         public void Move(Vector2 moveDelta)
         {
             Debug.Assert(!IsStatic, $"Request Move to static body: {target.name}");
+
             pendingMoveDelta += moveDelta;
         }
 
         public void Teleport(Vector2 position)
         {
-            // 지금 텔레포트 요청 즉시 anchorPosition을 바꿔주는데 이러면 안된다
-            // 텔레포트도 pending으로 넣어두고 solving 시점? 월드 업데이트 시점에 해주어야한다?
-            // 왜냐면 같은 update 흐름에서 cast를 했을 때 그 업데이트에서의 위치는 아직 텔레포트하지 않은 위치인데 
-            // cast에 검출되지 않을 수 있다.
             Debug.Assert(!IsStatic, $"Request Teleport to static body: {target.name}");
-            anchorPosition = position;
-            pendingMoveDelta = Vector2.zero;
+
+            // 텔레포트 이동도 solve 시점과 통일하기 위해서 즉시 적용하지 않는다.
+            // 즉시 적용 시 cast를 했을 때 Teleport와 cast 순서에 따라서 cast가 검출되거나 검출되지 않게되어 일관성이 없고 cast 결과가 코드 순서에 영향을 받게 된다.
+            pendingTeleportPosition = position;
         }
 
-        internal Vector2 ConsumeDelta()
+        internal void ApplyTeleport()
+        {
+            if (pendingTeleportPosition.HasValue == false) return;
+
+            anchorPosition = pendingTeleportPosition.Value;
+            pendingTeleportPosition = null;
+        }
+
+        internal Vector2 ConsumeMoveDelta()
         {
 #if UNITY_EDITOR
             debugStartPosition = anchorPosition;

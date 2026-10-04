@@ -18,8 +18,10 @@ namespace Kinematic.Runtime
             body = new KinematicBody(transform, colliderInfo, isStatic);
         }
 
+        // 이벤트로 Register해야할듯
         private void OnEnable() => KinematicWorld.Register(body);
 
+        // 이벤트로 Unregister
         private void OnDisable() => KinematicWorld.Unregister(body);
 
 #if UNITY_EDITOR
