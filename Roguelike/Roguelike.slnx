@@ -8,6 +8,7 @@
   <Project Path="SerializableDictionary.Editor.csproj" />
   <Project Path="Pawn.Data.csproj" />
   <Project Path="Game.Runtime.csproj" />
+  <Project Path="Kinematic.Test.csproj" />
   <Project Path="EventSystem.csproj" />
   <Project Path="StateMachine.csproj" />
   <Project Path="Pawn.Interface.csproj" />

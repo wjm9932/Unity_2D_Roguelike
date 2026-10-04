@@ -24,7 +24,11 @@ namespace Input.Controls
     public interface IPawnControls
     {
         public ReadOnlyReactiveProperty<MoveInfo> Move { get; }
-        
+
+#if UNITY_EDITOR
+        public ReadOnlyReactiveProperty<MoveInfo> TestMove { get; }
+#endif
+
         public void Enable();
 
         public void Disable();
@@ -37,6 +41,11 @@ namespace Input.Controls
     {
         public ReadOnlyReactiveProperty<MoveInfo> Move => move;
         private readonly ReactiveProperty<MoveInfo> move = new();
+
+#if UNITY_EDITOR
+        public ReadOnlyReactiveProperty<MoveInfo> TestMove => testMove;
+        private readonly ReactiveProperty<MoveInfo> testMove = new();
+#endif
 
         public void Enable()
         {
@@ -84,6 +93,8 @@ namespace Input.Controls
             public void UnRegister() => actions.RemoveCallbacks(this);
 
             public void OnMove(InputAction.CallbackContext context) => controls.move.Value = new MoveInfo(context.ReadValue<Vector2>());
+
+            public void OnTestMove(InputAction.CallbackContext context) => controls.testMove.Value = new MoveInfo(context.ReadValue<Vector2>());
         }
 
         private PawnInputAdapter pawnInputAdapter;
