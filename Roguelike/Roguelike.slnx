@@ -18,4 +18,5 @@
   <Project Path="Foundations.csproj" />
   <Project Path="Scene.csproj" />
   <Project Path="CustomAttributes.Runtime.csproj" />
+  <Project Path="Kinematic.Interface.csproj" />
 </Solution>
