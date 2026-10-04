@@ -1,7 +1,5 @@
 using Cysharp.Threading.Tasks;
 using Game.Data;
-using Kinematic.Data;
-using Kinematic.Runtime;
 using Scene;
 using UnityEngine;
 
@@ -25,8 +23,6 @@ public static class Bootstrap
     private static async UniTask LoadAsync()
     {
         await StaticDataRepository.LoadAsync();
-        
-        KinematicWorld.Init(new AABB(new Vector2(-10f, -10f), new Vector2(10f, 10f)), useSweep: true);
 
         await Game.Runtime.Game.Instance.ChangeScene(SceneId.Battle1);
     }
