@@ -4,35 +4,18 @@ namespace Kinematic.Runtime
 {
     public static class KinematicWorld
     {
-        private static readonly KinematicSolver solver = KinematicSolver.Instance;
+        public static void Init(in AABB bounds, bool useSweep) => KinematicSimulation.Instance.Init(bounds, useSweep);
 
-        private static bool isInit = false;
+        public static void Register(KinematicBody body) => KinematicSimulation.Instance.Register(body);
 
-        public static void Init(AABB bounds, bool useSweep)
-        {
-            if (isInit)
-            {
-                throw new System.Exception("Kinematic World is alreay initialized");
-            }
+        public static void Unregister(KinematicBody body) => KinematicSimulation.Instance.Unregister(body);
 
-            isInit = solver.Init(bounds, useSweep);
-        }
+        internal static void Tick() => KinematicSimulation.Instance.Tick();
 
-        internal static void Tick()
-        {
-            if (isInit == false) return;
-
-            solver.Solve();
-        }
-
-        public static void Register(KinematicBody body) => solver.Register(body);
-
-        public static void Unregister(KinematicBody body) => solver.Unregister(body);
-
-        public static void Dispose() => solver.Dispose();
+        public static void Dispose() => KinematicSimulation.Instance.Dispose();
 
 #if UNITY_EDITOR
-        internal static void DrawQuadTreeBounds() => solver.DrawQuadTreeBounds();
+        internal static void DrawQuadTreeBounds() => KinematicSimulation.Instance.DrawQuadTreeBounds();
 #endif
     }
 
