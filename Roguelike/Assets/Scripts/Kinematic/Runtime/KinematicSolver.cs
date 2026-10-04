@@ -11,6 +11,7 @@ namespace Kinematic.Runtime
 
         private readonly List<KinematicBody> dynamicBodies = new();
         private readonly List<KinematicBody> queryResult = new();
+        private readonly List<Vector2> discreteMoveDeltas = new();
         private readonly List<SweepBodyState> sweepBodyStates = new();
         private readonly List<SweepContact> sweepContacts = new();
         private QuadTree staticBodies;
@@ -52,10 +53,12 @@ namespace Kinematic.Runtime
         internal void DrawQuadTreeBounds() => staticBodies?.DrawBounds(dynamicBodies);
 #endif
 
-        internal void Init(AABB bounds, bool useSweep)
+        internal bool Init(AABB bounds, bool useSweep)
         {
             staticBodies = new QuadTree(bounds);
             this.useSweep = useSweep;
+
+            return true;
         }
 
         internal void Register(KinematicBody body)
@@ -340,8 +343,11 @@ namespace Kinematic.Runtime
             }
             else
             {
-                SolveDiscreteMovements();
+                // 기존 겹침은 이동으로 생긴 충돌과 구분해서 먼저 분리한다.
                 ResolveDiscreteCollisions();
+                SolveDiscreteMovements();
+                ResolveDiscreteCollisions(useMovementDeltas: true);
+                discreteMoveDeltas.Clear();
             }
 
             SyncDynamicTransforms();
@@ -364,16 +370,18 @@ namespace Kinematic.Runtime
         {
             foreach (var body in dynamicBodies)
             {
-                body.ApplyMovement(body.ConsumeDelta());
+                var moveDelta = body.ConsumeDelta();
+                discreteMoveDeltas.Add(moveDelta);
+                body.ApplyMovement(moveDelta);
             }
         }
 
-        private void ResolveDiscreteCollisions()
+        private void ResolveDiscreteCollisions(bool useMovementDeltas = false)
         {
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
-                var hasDynamicStaticCollision = SolveDynamicStaticCollisions();
-                var hasDynamicDynamicCollision = SolveDynamicDynamicCollisions();
+                var hasDynamicStaticCollision = SolveDynamicStaticCollisions(useMovementDeltas);
+                var hasDynamicDynamicCollision = SolveDynamicDynamicCollisions(useMovementDeltas);
 
                 if (!hasDynamicStaticCollision && !hasDynamicDynamicCollision)
                 {
@@ -382,12 +390,13 @@ namespace Kinematic.Runtime
             }
         }
 
-        private bool SolveDynamicStaticCollisions()
+        private bool SolveDynamicStaticCollisions(bool useMovementDeltas)
         {
             var hasCollision = false;
 
-            foreach (var dynamicBody in dynamicBodies)
+            for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
+                var dynamicBody = dynamicBodies[bodyIndex];
                 staticBodies.Query(dynamicBody.Bounds, queryResult);
 
                 foreach (var staticBody in queryResult)
@@ -398,6 +407,10 @@ namespace Kinematic.Runtime
                     }
 
                     dynamicBody.ApplyCorrection(contact.SeparationMtv);
+                    if (useMovementDeltas)
+                    {
+                        discreteMoveDeltas[bodyIndex] += contact.SeparationMtv;
+                    }
                     hasCollision = true;
                 }
             }
@@ -405,7 +418,7 @@ namespace Kinematic.Runtime
             return hasCollision;
         }
 
-        private bool SolveDynamicDynamicCollisions()
+        private bool SolveDynamicDynamicCollisions(bool useMovementDeltas)
         {
             var hasCollision = false;
 
@@ -417,15 +430,58 @@ namespace Kinematic.Runtime
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
 
+                    // 충돌 검사
                     if (!bodyA.TryCollide(bodyB, out var contact))
                     {
                         continue;
                     }
 
-                    var halfMtv = contact.SeparationMtv * 0.5f;
+                    if (!useMovementDeltas)
+                    {
+                        var halfMtv = contact.SeparationMtv * 0.5f;
+                        bodyA.ApplyCorrection(halfMtv);
+                        bodyB.ApplyCorrection(-halfMtv);
+                    }
+                    // 서로 지나쳐 접촉 법선이 뒤집히면 접근한 바디 대신 상대 바디가 보정될 수 있다.
+                    else
+                    {
+                        var moveDeltaA = discreteMoveDeltas[bodyAIndex];
+                        var moveDeltaB = discreteMoveDeltas[bodyBIndex];
+                        var normal = contact.SeparationNormal;
 
-                    bodyA.ApplyCorrection(halfMtv);
-                    bodyB.ApplyCorrection(-halfMtv);
+                        // 바디 A의 법선 안쪽 이동량
+                        var correctionWeightA = Mathf.Max(0f, Vector2.Dot(moveDeltaA, -normal));
+                        // 바디 B의 법선 안쪽 이동량
+                        var correctionWeightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
+                        // 두 바디의 법선 안쪽 이동량 합. 충돌 전 간격을 좁힌 이동도 포함되므로 겹침 크기와 다를 수 있다.
+                        var totalWeight = correctionWeightA + correctionWeightB;
+                        // 이동 후 법선에 안쪽 이동 성분이 없는 경우
+                        if (totalWeight <= MinMoveDistance)
+                        {
+                            // 이동량 크기로 보정을 분담하여 정지한 바디는 밀지 않는다.
+                            correctionWeightA = moveDeltaA.magnitude;
+                            correctionWeightB = moveDeltaB.magnitude;
+                            totalWeight = correctionWeightA + correctionWeightB;
+                        }
+
+                        if (totalWeight <= MinMoveDistance)
+                        {
+                            continue;
+                        }
+
+                        // 각 바디의 가중치 비율에 따라 MTV를 분담한다.
+                        // A는 법선 방향으로, B는 반대 방향으로 보정한다.
+                        var correctionA = contact.SeparationMtv * (correctionWeightA / totalWeight);
+                        var correctionB = -contact.SeparationMtv * (correctionWeightB / totalWeight);
+
+                        // 보정 적용
+                        bodyA.ApplyCorrection(correctionA);
+                        bodyB.ApplyCorrection(correctionB);
+
+                        discreteMoveDeltas[bodyAIndex] += correctionA;
+                        discreteMoveDeltas[bodyBIndex] += correctionB;
+                    }
+
                     hasCollision = true;
                 }
             }
@@ -439,6 +495,11 @@ namespace Kinematic.Runtime
             {
                 body.SyncTransform();
             }
+        }
+
+        internal void Dispose()
+        {
+
         }
     }
 }

@@ -34,6 +34,7 @@ namespace Kinematic.Runtime
             if (KinematicBodyExtension.TryCollide(movingCenter, movingShape, targetBody.Center, targetBody.Shape, out var contact))
             {
                 hit = CreateHit(movingCenter, movingShape, targetBody, moveDelta, 0f, contact.SeparationNormal);
+
                 return true;
             }
 
@@ -56,12 +57,13 @@ namespace Kinematic.Runtime
                 _ => false
             };
 
-            if (!hasHit)
+            if (hasHit == false)
             {
                 return false;
             }
 
             hit = CreateHit(movingCenter, movingShape, targetBody, moveDelta, castResult.Fraction, castResult.Normal, castResult.IsGrazing);
+
             return true;
         }
 
