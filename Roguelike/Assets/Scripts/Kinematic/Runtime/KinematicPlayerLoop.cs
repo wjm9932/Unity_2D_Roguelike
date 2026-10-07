@@ -50,6 +50,8 @@ namespace Kinematic.Runtime
                 }
 
                 var newSystems = new List<PlayerLoopSystem>(systems);
+                // i는 Update 이므로 i + 1은 업데이트 루프 이후에 Kinematic Update를 삽입한다.
+                // 즉 Kinematic Upate는 mono update 직후 실행된다.
                 newSystems.Insert(i + 1, systemToInsert);
                 playerLoop.subSystemList = newSystems.ToArray();
 
