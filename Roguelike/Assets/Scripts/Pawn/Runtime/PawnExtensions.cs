@@ -1,9 +1,26 @@
 ﻿using EventSystem;
+using System;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("GameLoop")]
 
 namespace Pawn.Runtime
 {
     internal static class PawnExtensions
     {
+        private static event Action consumeMoveRequests;
+
+        internal static void RegisterConsumeMoveRequest(this Pawn pawn)
+        {
+            consumeMoveRequests += pawn.ConsumeMoveRequest;
+        }
+
+        internal static void UnregisterConsumeMoveRequest(this Pawn pawn)
+        {
+            consumeMoveRequests -= pawn.ConsumeMoveRequest;
+        }
+
+        internal static void ConsumeMoveRequests() => consumeMoveRequests?.Invoke();
+
         internal static void ThrowUpdate(this Pawn pawn, float dt)
         {
             pawn.PawnController.OnUpdate(dt);

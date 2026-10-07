@@ -22,6 +22,8 @@ namespace Pawn.Runtime
             pawnStatsBehaviour = statsBehaviour;
             pawnBehaviour = behaviour;
             pawnMovement = movement;
+
+            this.RegisterConsumeMoveRequest();
         }
 
         internal void Update()
@@ -29,6 +31,11 @@ namespace Pawn.Runtime
             var dt = TimeManager.Instance.InGameDeltaTime;
 
             this.ThrowUpdate(dt);
+        }
+
+        internal void ConsumeMoveRequest()
+        {
+            var dt = TimeManager.Instance.InGameDeltaTime;
 
             // 이동 요청은 큐에 쌓아놓고 한번에 처리
             pawnMovement.OnMove(dt);
@@ -41,6 +48,8 @@ namespace Pawn.Runtime
 
         public void Dispose()
         {
+            this.UnregisterConsumeMoveRequest();
+
             pawnMovement.Dispose();
         }
     }

@@ -72,8 +72,9 @@ namespace Input.Controls
     internal partial class PawnControls
     {
         /// <summary>
-        /// PawnControls 객체로 접근해서 OnMove 호출 막기 위해 Adapter로 분리
-        /// Adapter는 콜백 등록/해제의 책임을 가진다.
+        /// IPawnControls로 제공한 객체를 IPawnActions로 형변환하여
+        /// 콜백을 직접 호출하는 경로를 차단하기 위해 Adapter로 분리한다.
+        /// Adapter는 콜백 등록과 해제를 담당한다.
         /// </summary>
         private class PawnInputAdapter : IPawnActions
         {

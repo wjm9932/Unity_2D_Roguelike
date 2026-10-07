@@ -14,6 +14,7 @@
   <Project Path="Pawn.Interface.csproj" />
   <Project Path="SerializableDictionary.Runtime.csproj" />
   <Project Path="Game.Data.csproj" />
+  <Project Path="GameLoop.csproj" />
   <Project Path="CustomAttributes.Editor.csproj" />
   <Project Path="Foundations.csproj" />
   <Project Path="Scene.csproj" />
