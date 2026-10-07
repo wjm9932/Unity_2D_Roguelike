@@ -24,8 +24,9 @@ namespace Pawn.Runtime
             var behaviour = new PawnBehaviour(container.transform, movement, pawnDefinition.PawnStatsDefinition);
             var pawn = new Pawn(controller, statsBehaviour, behaviour, movement);
 
+            // 이 어뎁터 구조는 고민 필요
             var adapter = container.AddComponent<PawnAdapter>();
-            adapter.Initialize(pawn.Update, pawn.Dispose);
+            adapter.Initialize(pawn.Update);
 
             disposeLinker.Inject(pawn);
 

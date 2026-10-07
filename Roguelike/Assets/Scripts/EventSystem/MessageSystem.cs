@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("GameLoop")]
+
 namespace EventSystem
 {
     public delegate void SubscribeCallback(Event e);
@@ -61,16 +63,15 @@ namespace EventSystem
         /// </summary>
         private readonly Dictionary<Type, List<SubscribeCallbackInfo>> subscribeCallbacks = new();
 
-        public void Update()
+        internal void Update()
         {
-            ProcessRequests();
+            ConsumeRequests();
 
             PublishEvents();
-
         }
 
         // 구독보다 구독 해제의 우선 순위가 더 높게 정책상 결정
-        private void ProcessRequests()
+        private void ConsumeRequests()
         {
             // 구독보다 구독 해제의 우선 순위가 더 높게 정책상 결정
             foreach (var subRequest in subscribeRequests)

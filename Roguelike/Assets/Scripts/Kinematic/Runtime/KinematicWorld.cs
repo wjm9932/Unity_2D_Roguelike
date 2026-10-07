@@ -1,5 +1,7 @@
 using Kinematic.Data;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("GameLoop")]
+
 namespace Kinematic.Runtime
 {
     public static class KinematicWorld
