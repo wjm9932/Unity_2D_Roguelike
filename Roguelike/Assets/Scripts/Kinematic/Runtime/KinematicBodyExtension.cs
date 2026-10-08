@@ -7,6 +7,12 @@ namespace Kinematic.Runtime
     {
         internal static bool CanCollideWith(this KinematicBody bodyA, KinematicBody bodyB)
         {
+            // 고스트 바디는 Pawn만 통과하며, 상대 바디의 충돌 반응도 함께 끈다.
+            if ((bodyA.IsGhost && bodyA.CanGhostThrough(bodyB)) || (bodyB.IsGhost && bodyB.CanGhostThrough(bodyA)))
+            {
+                return false;
+            }
+
             return (bodyA.CollidableLayer.value & (1 << bodyB.Layer)) != 0;
         }
 

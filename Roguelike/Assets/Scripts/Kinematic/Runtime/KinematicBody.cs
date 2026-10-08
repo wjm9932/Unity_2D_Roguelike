@@ -9,6 +9,7 @@ namespace Kinematic.Runtime
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
         private Vector2? pendingTeleportPosition;
+        private static readonly int ghostLayerMask = LayerMask.GetMask("Pawn");
 
 #if UNITY_EDITOR
         private Vector2 debugStartPosition;
@@ -36,6 +37,8 @@ namespace Kinematic.Runtime
         public LayerMask CollidableLayer { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
         internal bool IsStatic { get; }
+        internal bool IsGhost { get; private set; }
+        internal bool NeedsGhostRecovery { get; private set; }
         internal AABB Bounds
         {
             get
@@ -66,6 +69,19 @@ namespace Kinematic.Runtime
 
             pendingMoveDelta += moveDelta;
         }
+
+        public void SetGhost(bool isGhost)
+        {
+            if (IsGhost == isGhost) return;
+
+            // 고스트에서 복귀한 바디가 기존 겹침을 해소하도록 기록한다.
+            NeedsGhostRecovery = !isGhost;
+            IsGhost = isGhost;
+        }
+
+        internal bool CanGhostThrough(KinematicBody body) => (ghostLayerMask & (1 << body.Layer)) != 0;
+
+        internal void CompleteGhostRecovery() => NeedsGhostRecovery = false;
 
         public void Teleport(Vector2 position)
         {
