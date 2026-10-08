@@ -5,8 +5,21 @@ namespace Kinematic.Runtime
 {
     internal static class KinematicBodyExtension
     {
+        internal static bool CanCollideWith(this KinematicBody bodyA, KinematicBody bodyB)
+        {
+            // 양쪽 바디가 서로의 레이어를 충돌 대상으로 선택했을 때만 충돌을 해결한다.
+            return (bodyA.CollidableLayer.value & (1 << bodyB.Layer)) != 0 &&
+                   (bodyB.CollidableLayer.value & (1 << bodyA.Layer)) != 0;
+        }
+
         internal static bool TryCollide(this KinematicBody bodyA, KinematicBody bodyB, out Contact contact)
         {
+            contact = default;
+            if (!bodyA.CanCollideWith(bodyB))
+            {
+                return false;
+            }
+
             return TryCollide(bodyA.Center, bodyA.Shape, bodyB.Center, bodyB.Shape, out contact);
         }
 

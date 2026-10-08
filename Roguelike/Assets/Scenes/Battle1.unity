@@ -151,6 +151,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Kinematic.Runtime::Kinematic.Runtime.KinematicBodyAdapter
   isStatic: 1
   colliderInfo:
+    layer: 0
     shape: 1
     offset: {x: -0, y: 0}
     radius: 0
@@ -398,6 +399,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Kinematic.Runtime::Kinematic.Runtime.KinematicBodyAdapter
   isStatic: 1
   colliderInfo:
+    layer: 0
     shape: 0
     offset: {x: -0, y: 0}
     radius: 2
@@ -508,6 +510,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Kinematic.Runtime::Kinematic.Runtime.KinematicBodyAdapter
   isStatic: 1
   colliderInfo:
+    layer: 0
     shape: 1
     offset: {x: -0, y: 0}
     radius: 0
@@ -618,6 +621,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Kinematic.Runtime::Kinematic.Runtime.KinematicBodyAdapter
   isStatic: 1
   colliderInfo:
+    layer: 0
     shape: 1
     offset: {x: -0, y: 0}
     radius: 0

@@ -13,9 +13,9 @@ namespace Pawn.Runtime
         private AnimationCurve accelerationCurve;
         private float accelElapsedTime;
 
-        internal PawnMovement(Transform owner, ColliderInfo colldierInfo, AnimationCurve accelCurve)
+        internal PawnMovement(Transform owner, ColliderInfo colldierInfo, AnimationCurve accelCurve, int collidableLayer = ~0)
         {
-            kinematicBody = new KinematicBody(owner, colldierInfo, false);
+            kinematicBody = new KinematicBody(owner, colldierInfo, false, collidableLayer);
             accelerationCurve = accelCurve;
 
             KinematicWorld.Register(kinematicBody);

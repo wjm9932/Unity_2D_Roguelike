@@ -14,8 +14,10 @@ namespace Pawn.Data
     {
         [SerializeField] private GameObject avatar;
         [SerializeField] private ColliderInfo colliderInfo;
+        [SerializeField] private LayerMask collidableLayer = ~0;
 
         public GameObject Avatar => avatar;
         public ColliderInfo ColiderInfo => colliderInfo;
+        public LayerMask CollidableLayer => collidableLayer;
     }
 }

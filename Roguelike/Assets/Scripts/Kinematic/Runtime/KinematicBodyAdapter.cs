@@ -8,6 +8,7 @@ namespace Kinematic.Runtime
     {
         [SerializeField] private bool isStatic = true;
         [SerializeField] private ColliderInfo colliderInfo;
+        [SerializeField] private LayerMask collidableLayer = ~0;
 
         private KinematicBody body;
 
@@ -15,7 +16,7 @@ namespace Kinematic.Runtime
         {
             if (body != null) return;
 
-            body = new KinematicBody(transform, colliderInfo, isStatic);
+            body = new KinematicBody(transform, colliderInfo, isStatic, collidableLayer);
         }
 
         // 이벤트로 Register해야할듯

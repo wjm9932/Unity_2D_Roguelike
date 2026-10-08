@@ -21,7 +21,7 @@ namespace Kinematic.Runtime
             dynamicBodies = dynamics;
         }
 
-        internal bool CircleCast(Vector2 origin, float radius, Vector2 distance, KinematicBody ignoredBody, out ShapeCastHit hit)
+        internal bool CircleCast(Vector2 origin, float radius, Vector2 distance, KinematicBody ignoredBody, int layerMask, out ShapeCastHit hit)
         {
             Debug.Assert(radius >= 0f, $"CircleCast radius must be non-negative: {radius}");
 
@@ -32,10 +32,10 @@ namespace Kinematic.Runtime
             }
 
             var shape = ColliderInfo.CreateCircle(Vector2.zero, radius);
-            return ShapeCast(origin, shape, distance, ignoredBody, queryDynamicBodies: true, out hit);
+            return ShapeCast(origin, shape, distance, ignoredBody, queryDynamicBodies: true, layerMask, out hit);
         }
 
-        internal bool BoxCast(Vector2 origin, Vector2 halfExtents, Vector2 distance, KinematicBody ignoredBody, out ShapeCastHit hit)
+        internal bool BoxCast(Vector2 origin, Vector2 halfExtents, Vector2 distance, KinematicBody ignoredBody, int layerMask, out ShapeCastHit hit)
         {
             Debug.Assert(halfExtents.x >= 0f && halfExtents.y >= 0f, $"BoxCast half extents must be non-negative: {halfExtents}");
 
@@ -46,12 +46,12 @@ namespace Kinematic.Runtime
             }
 
             var shape = ColliderInfo.CreateBox(Vector2.zero, halfExtents);
-            return ShapeCast(origin, shape, distance, ignoredBody, queryDynamicBodies: true, out hit);
+            return ShapeCast(origin, shape, distance, ignoredBody, queryDynamicBodies: true, layerMask, out hit);
         }
 
-        internal bool ShapeCast(KinematicBody body, Vector2 distance, out ShapeCastHit hit) => ShapeCast(body.Center, body.Shape, distance, body, queryDynamicBodies: true, out hit);
+        internal bool ShapeCast(KinematicBody body, Vector2 distance, int layerMask, out ShapeCastHit hit) => ShapeCast(body.Center, body.Shape, distance, body, queryDynamicBodies: true, layerMask, out hit);
 
-        private bool ShapeCast(Vector2 origin, in ColliderInfo shape, Vector2 distance, KinematicBody ignoredBody, bool queryDynamicBodies, out ShapeCastHit hit)
+        private bool ShapeCast(Vector2 origin, in ColliderInfo shape, Vector2 distance, KinematicBody ignoredBody, bool queryDynamicBodies, int layerMask, out ShapeCastHit hit)
         {
             hit = default;
 
@@ -76,7 +76,7 @@ namespace Kinematic.Runtime
 
             foreach (var candidate in queryResult)
             {
-                TryUpdateClosestHit(origin, shape, distance, ignoredBody, candidate, ref closestFraction, ref hit, ref hasHit);
+                TryUpdateClosestHit(origin, shape, distance, ignoredBody, candidate, layerMask, ref closestFraction, ref hit, ref hasHit);
             }
 
             queryResult.Clear();
@@ -93,15 +93,20 @@ namespace Kinematic.Runtime
                     continue;
                 }
 
-                TryUpdateClosestHit(origin, shape, distance, ignoredBody, candidate, ref closestFraction, ref hit, ref hasHit);
+                TryUpdateClosestHit(origin, shape, distance, ignoredBody, candidate, layerMask, ref closestFraction, ref hit, ref hasHit);
             }
 
             return hasHit;
         }
 
-        private static void TryUpdateClosestHit(Vector2 origin, in ColliderInfo shape, Vector2 moveDelta, KinematicBody ignoredBody, KinematicBody candidate, ref float closestFraction, ref ShapeCastHit closestHit, ref bool hasHit)
+        private static void TryUpdateClosestHit(Vector2 origin, in ColliderInfo shape, Vector2 moveDelta, KinematicBody ignoredBody, KinematicBody candidate, int layerMask, ref float closestFraction, ref ShapeCastHit closestHit, ref bool hasHit)
         {
-            if (candidate == ignoredBody || KinematicShapeCast.TryCast(origin, shape, candidate, moveDelta, out var candidateHit) == false || candidateHit.Fraction >= closestFraction)
+            if (candidate == ignoredBody || (layerMask & (1 << candidate.Layer)) == 0)
+            {
+                return;
+            }
+
+            if (KinematicShapeCast.TryCast(origin, shape, candidate, moveDelta, out var candidateHit) == false || candidateHit.Fraction >= closestFraction)
             {
                 return;
             }

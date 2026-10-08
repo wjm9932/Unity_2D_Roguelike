@@ -127,7 +127,7 @@ namespace Kinematic.Runtime
         private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
             var body = dynamicBodies[bodyAIndex];
-            if (KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
+            if (!body.CanCollideWith(candidate) || KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
             {
                 return;
             }
