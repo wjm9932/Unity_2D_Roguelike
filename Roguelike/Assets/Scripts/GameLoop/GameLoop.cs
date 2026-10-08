@@ -43,6 +43,8 @@ namespace GameLoop
             var playerLoop = PlayerLoop.GetCurrentPlayerLoop();
             // 업데이트 순서 정의
             var updateOrder = DefineUpdateOrder();
+            // 이전에 등록한 항목을 제거해 중복 실행을 방지한다.
+            RemoveExistingSystems(ref playerLoop);
 
             // Update 이후 정의한 업데이트 순서대로 삽입
             if (!InsertAfter(ref playerLoop, typeof(UnityEngine.PlayerLoop.Update), updateOrder))
@@ -53,6 +55,10 @@ namespace GameLoop
 
             // PlayerLoop 세팅
             PlayerLoop.SetPlayerLoop(playerLoop);
+#if UNITY_EDITOR
+            Application.quitting -= Uninstall;
+            Application.quitting += Uninstall;
+#endif
         }
 
         private static bool InsertAfter(ref PlayerLoopSystem playerLoop, Type targetType, UpdateStep[] updateOrder)
@@ -93,7 +99,7 @@ namespace GameLoop
             return false;
         }
 
-        private static void RemoveExistingSystems(ref PlayerLoopSystem playerLoop, UpdateStep[] updateOrder)
+        private static void RemoveExistingSystems(ref PlayerLoopSystem playerLoop)
         {
             var systems = playerLoop.subSystemList;
             if (systems == null)
@@ -105,29 +111,43 @@ namespace GameLoop
             for (int i = 0; i < systems.Length; i++)
             {
                 var system = systems[i];
-                if (IsGameLoopSystem(system.type, updateOrder))
+                if (IsGameLoopSystem(system.type))
                 {
                     continue;
                 }
 
-                RemoveExistingSystems(ref system, updateOrder);
+                RemoveExistingSystems(ref system);
                 retainedSystems.Add(system);
             }
 
             playerLoop.subSystemList = retainedSystems.ToArray();
         }
 
-        private static bool IsGameLoopSystem(Type type, UpdateStep[] updateOrder)
+        private static bool IsGameLoopSystem(Type type)
         {
-            for (int i = 0; i < updateOrder.Length; i++)
-            {
-                if (updateOrder[i].Type == type)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return type == typeof(MessageSystemUpdate)
+                || type == typeof(PawnMovementResolveUpdate)
+                || type == typeof(KinematicWorldUpdate);
         }
+
+#if UNITY_EDITOR
+        private static void Uninstall()
+        {
+            var playerLoop = PlayerLoop.GetCurrentPlayerLoop();
+            RemoveExistingSystems(ref playerLoop);
+            PlayerLoop.SetPlayerLoop(playerLoop);
+            Application.quitting -= Uninstall;
+        }
+
+        [UnityEditor.InitializeOnLoadMethod]
+        private static void InitializeEditor()
+        {
+            // Edit 모드에서 스크립트가 다시 로드되면 남아 있는 실행 항목을 정리한다.
+            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                Uninstall();
+            }
+        }
+#endif
     }
 }
