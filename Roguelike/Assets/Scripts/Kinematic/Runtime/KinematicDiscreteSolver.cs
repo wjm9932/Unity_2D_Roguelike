@@ -94,10 +94,10 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
-                    var solveBodyA = bodyA.CanCollideWith(bodyB);
-                    var solveBodyB = bodyB.CanCollideWith(bodyA);
+                    var ShouldSolveBodyA = bodyA.CanCollideWith(bodyB);
+                    var ShouldSolveBodyB = bodyB.CanCollideWith(bodyA);
 
-                    if (!solveBodyA && !solveBodyB)
+                    if (!ShouldSolveBodyA && !ShouldSolveBodyB)
                     {
                         continue;
                     }
@@ -109,10 +109,10 @@ namespace Kinematic.Runtime
                     }
 
                     // 한쪽만 반응하면 이동량 비율과 관계없이 그 바디만 겹침을 해소한다.
-                    if (solveBodyA != solveBodyB)
+                    if (ShouldSolveBodyA != ShouldSolveBodyB)
                     {
-                        var bodyIndex = solveBodyA ? bodyAIndex : bodyBIndex;
-                        var correction = solveBodyA ? contact.SeparationMtv : -contact.SeparationMtv;
+                        var bodyIndex = ShouldSolveBodyA ? bodyAIndex : bodyBIndex;
+                        var correction = ShouldSolveBodyA ? contact.SeparationMtv : -contact.SeparationMtv;
                         dynamicBodies[bodyIndex].ApplyCorrection(correction);
                         discreteMoveDeltas[bodyIndex] += correction;
                     }

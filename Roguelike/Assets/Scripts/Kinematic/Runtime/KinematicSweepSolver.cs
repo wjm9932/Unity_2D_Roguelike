@@ -41,16 +41,16 @@ namespace Kinematic.Runtime
             internal int BodyAIndex { get; }
             internal int BodyBIndex { get; }
             internal Vector2 Normal { get; }
-            internal bool SolveBodyA { get; }
-            internal bool SolveBodyB { get; }
+            internal bool ShouldSlideBodyA { get; }
+            internal bool ShouldSlideBodyB { get; }
 
-            internal SweepContact(int bodyAIndex, int bodyBIndex, Vector2 normal, bool solveBodyA, bool solveBodyB)
+            internal SweepContact(int bodyAIndex, int bodyBIndex, Vector2 normal, bool shouldSlideBodyA, bool shouldSlideBodyB)
             {
                 BodyAIndex = bodyAIndex;
                 BodyBIndex = bodyBIndex;
                 Normal = normal;
-                SolveBodyA = solveBodyA;
-                SolveBodyB = solveBodyB;
+                ShouldSlideBodyA = shouldSlideBodyA;
+                ShouldSlideBodyB = shouldSlideBodyB;
             }
         }
 
@@ -131,10 +131,10 @@ namespace Kinematic.Runtime
         private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
             var body = dynamicBodies[bodyAIndex];
-            var solveBodyA = body.CanCollideWith(candidate) && sweepBodyStates[bodyAIndex].HasMoveDelta;
-            var solveBodyB = bodyBIndex >= 0 && candidate.CanCollideWith(body) && sweepBodyStates[bodyBIndex].HasMoveDelta;
+            var shouldSlideBodyA = body.CanCollideWith(candidate) && sweepBodyStates[bodyAIndex].HasMoveDelta;
+            var shouldSlideBodyB = bodyBIndex >= 0 && candidate.CanCollideWith(body) && sweepBodyStates[bodyBIndex].HasMoveDelta;
 
-            if (!solveBodyA && !solveBodyB)
+            if (!shouldSlideBodyA && !shouldSlideBodyB)
             {
                 return;
             }
@@ -150,11 +150,15 @@ namespace Kinematic.Runtime
                 return;
             }
 
-            // 자기 이동으로 슬라이드할 바디가 없다면 건너뛰고, 남은 겹침은 다음 프레임 MTV로 해소한다.
-            solveBodyA = solveBodyA && Vector2.Dot(sweepBodyStates[bodyAIndex].RemainingMoveDelta, candidateHit.Normal) < 0f;
-            solveBodyB = solveBodyB && Vector2.Dot(sweepBodyStates[bodyBIndex].RemainingMoveDelta, -candidateHit.Normal) < 0f;
+            // A가 B를 충돌 대상으로 지정했고, A의 이동이 B의 충돌 표면 안쪽을 향할 때만 A를 슬라이드 대상으로 지정한다. B도 같은 기준으로 판단한다.
+            // A만 B와 충돌하도록 설정된 경우, B가 A보다 빠르게 접근하면 상대 이동 기준으로 충돌이 검출될 수 있다.
+            // 이때 A가 B에게서 빠져나가는 방향으로 이동 중이면 A의 이동량은 슬라이드로 변경되지 않고, B는 충돌 설정상 반응하지 않는다.
+            // 따라서 내적 검사로 실제로 슬라이드할 바디가 없는 접촉을 제외한다.
+            // 제외하지 않으면 Fraction = 0인 같은 접촉을 반복 선택해 다른 바디의 남은 이동까지 처리하지 못할 수 있다.
+            shouldSlideBodyA = shouldSlideBodyA && Vector2.Dot(sweepBodyStates[bodyAIndex].RemainingMoveDelta, candidateHit.Normal) < 0f;
+            shouldSlideBodyB = shouldSlideBodyB && Vector2.Dot(sweepBodyStates[bodyBIndex].RemainingMoveDelta, -candidateHit.Normal) < 0f;
 
-            if (!solveBodyA && !solveBodyB)
+            if (!shouldSlideBodyA && !shouldSlideBodyB)
             {
                 return;
             }
@@ -167,7 +171,7 @@ namespace Kinematic.Runtime
 
             // 동적 쌍은 상대 좌표계로 cast하므로 월드 접촉점 대신 법선만 저장한다.
             // 한 프레임에 같이 처리하기 위해 같은 충돌 시점의 접촉을 모두 저장한다.
-            sweepContacts.Add(new SweepContact(bodyAIndex, bodyBIndex, candidateHit.Normal, solveBodyA, solveBodyB));
+            sweepContacts.Add(new SweepContact(bodyAIndex, bodyBIndex, candidateHit.Normal, shouldSlideBodyA, shouldSlideBodyB));
         }
 
         private void Sweep()
@@ -186,12 +190,12 @@ namespace Kinematic.Runtime
 
                 foreach (var contact in sweepContacts)
                 {
-                    if (contact.SolveBodyA)
+                    if (contact.ShouldSlideBodyA)
                     {
                         SlideSweepBody(contact.BodyAIndex, contact.Normal);
                     }
 
-                    if (contact.SolveBodyB)
+                    if (contact.ShouldSlideBodyB)
                     {
                         // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
                         SlideSweepBody(contact.BodyBIndex, -contact.Normal);
@@ -216,7 +220,7 @@ namespace Kinematic.Runtime
         private void SlideSweepBody(int bodyIndex, Vector2 normal)
         {
             var state = sweepBodyStates[bodyIndex];
-            if (!state.HasMoveDelta)
+            if (state.HasMoveDelta == false)
             {
                 return;
             }

@@ -90,10 +90,10 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
-                    var solveBodyA = bodyA.CanCollideWith(bodyB);
-                    var solveBodyB = bodyB.CanCollideWith(bodyA);
+                    var ShouldSolveBodyA = bodyA.CanCollideWith(bodyB);
+                    var ShouldSolveBodyB = bodyB.CanCollideWith(bodyA);
 
-                    if (!solveBodyA && !solveBodyB)
+                    if (!ShouldSolveBodyA && !ShouldSolveBodyB)
                     {
                         continue;
                     }
@@ -105,14 +105,14 @@ namespace Kinematic.Runtime
                     }
 
                     // 양쪽이 반응하면 MTV를 나누고, 한쪽만 반응하면 그 바디가 전부 보정한다.
-                    if (solveBodyA)
+                    if (ShouldSolveBodyA)
                     {
-                        bodyA.ApplyCorrection(contact.SeparationMtv * (solveBodyB ? 0.5f : 1f));
+                        bodyA.ApplyCorrection(contact.SeparationMtv * (ShouldSolveBodyB ? 0.5f : 1f));
                     }
 
-                    if (solveBodyB)
+                    if (ShouldSolveBodyB)
                     {
-                        bodyB.ApplyCorrection(-contact.SeparationMtv * (solveBodyA ? 0.5f : 1f));
+                        bodyB.ApplyCorrection(-contact.SeparationMtv * (ShouldSolveBodyA ? 0.5f : 1f));
                     }
 
                     hasCollision = true;
