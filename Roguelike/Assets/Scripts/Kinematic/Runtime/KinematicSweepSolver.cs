@@ -41,12 +41,16 @@ namespace Kinematic.Runtime
             internal int BodyAIndex { get; }
             internal int BodyBIndex { get; }
             internal Vector2 Normal { get; }
+            internal bool SolveBodyA { get; }
+            internal bool SolveBodyB { get; }
 
-            internal SweepContact(int bodyAIndex, int bodyBIndex, Vector2 normal)
+            internal SweepContact(int bodyAIndex, int bodyBIndex, Vector2 normal, bool solveBodyA, bool solveBodyB)
             {
                 BodyAIndex = bodyAIndex;
                 BodyBIndex = bodyBIndex;
                 Normal = normal;
+                SolveBodyA = solveBodyA;
+                SolveBodyB = solveBodyB;
             }
         }
 
@@ -127,13 +131,30 @@ namespace Kinematic.Runtime
         private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
             var body = dynamicBodies[bodyAIndex];
-            if (!body.CanCollideWith(candidate) || KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
+            var solveBodyA = body.CanCollideWith(candidate) && sweepBodyStates[bodyAIndex].HasMoveDelta;
+            var solveBodyB = bodyBIndex >= 0 && candidate.CanCollideWith(body) && sweepBodyStates[bodyBIndex].HasMoveDelta;
+
+            if (!solveBodyA && !solveBodyB)
+            {
+                return;
+            }
+
+            if (KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
             {
                 return;
             }
 
             // 스침 또는 초기 겹침에서 빠져나가는 접촉은 가장 가까운 Hit을 선택하기 전에 제외한다.
             if (candidateHit.IsGrazing || Vector2.Dot(moveDelta, candidateHit.Normal) >= -SweepDirectionEpsilon || candidateHit.Fraction > closestFraction)
+            {
+                return;
+            }
+
+            // 자기 이동으로 슬라이드할 바디가 없다면 건너뛰고, 남은 겹침은 다음 프레임 MTV로 해소한다.
+            solveBodyA = solveBodyA && Vector2.Dot(sweepBodyStates[bodyAIndex].RemainingMoveDelta, candidateHit.Normal) < 0f;
+            solveBodyB = solveBodyB && Vector2.Dot(sweepBodyStates[bodyBIndex].RemainingMoveDelta, -candidateHit.Normal) < 0f;
+
+            if (!solveBodyA && !solveBodyB)
             {
                 return;
             }
@@ -146,7 +167,7 @@ namespace Kinematic.Runtime
 
             // 동적 쌍은 상대 좌표계로 cast하므로 월드 접촉점 대신 법선만 저장한다.
             // 한 프레임에 같이 처리하기 위해 같은 충돌 시점의 접촉을 모두 저장한다.
-            sweepContacts.Add(new SweepContact(bodyAIndex, bodyBIndex, candidateHit.Normal));
+            sweepContacts.Add(new SweepContact(bodyAIndex, bodyBIndex, candidateHit.Normal, solveBodyA, solveBodyB));
         }
 
         private void Sweep()
@@ -165,9 +186,12 @@ namespace Kinematic.Runtime
 
                 foreach (var contact in sweepContacts)
                 {
-                    SlideSweepBody(contact.BodyAIndex, contact.Normal);
+                    if (contact.SolveBodyA)
+                    {
+                        SlideSweepBody(contact.BodyAIndex, contact.Normal);
+                    }
 
-                    if (contact.BodyBIndex >= 0)
+                    if (contact.SolveBodyB)
                     {
                         // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
                         SlideSweepBody(contact.BodyBIndex, -contact.Normal);
@@ -192,7 +216,7 @@ namespace Kinematic.Runtime
         private void SlideSweepBody(int bodyIndex, Vector2 normal)
         {
             var state = sweepBodyStates[bodyIndex];
-            if (state.HasMoveDelta == false)
+            if (!state.HasMoveDelta)
             {
                 return;
             }

@@ -69,7 +69,7 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (!dynamicBody.TryCollide(staticBody, out var contact))
+                    if (!dynamicBody.CanCollideWith(staticBody) || !dynamicBody.TryCollide(staticBody, out var contact))
                     {
                         continue;
                     }
@@ -94,6 +94,13 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
+                    var solveBodyA = bodyA.CanCollideWith(bodyB);
+                    var solveBodyB = bodyB.CanCollideWith(bodyA);
+
+                    if (!solveBodyA && !solveBodyB)
+                    {
+                        continue;
+                    }
 
                     // 충돌 검사
                     if (!bodyA.TryCollide(bodyB, out var contact))
@@ -101,42 +108,54 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
-                    // 서로 지나쳐 접촉 법선이 뒤집히면 접근한 바디 대신 상대 바디가 보정될 수 있다.
-                    var moveDeltaA = discreteMoveDeltas[bodyAIndex];
-                    var moveDeltaB = discreteMoveDeltas[bodyBIndex];
-                    var normal = contact.SeparationNormal;
-
-                    // 바디 A의 법선 안쪽 이동량
-                    var correctionWeightA = Mathf.Max(0f, Vector2.Dot(moveDeltaA, -normal));
-                    // 바디 B의 법선 안쪽 이동량
-                    var correctionWeightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
-                    // 두 바디의 법선 안쪽 이동량 합. 충돌 전 간격을 좁힌 이동도 포함되므로 겹침 크기와 다를 수 있다.
-                    var totalWeight = correctionWeightA + correctionWeightB;
-                    // 이동 후 법선에 안쪽 이동 성분이 없는 경우
-                    if (totalWeight <= MinMoveDistance)
+                    // 한쪽만 반응하면 이동량 비율과 관계없이 그 바디만 겹침을 해소한다.
+                    if (solveBodyA != solveBodyB)
                     {
-                        // 이동량 크기로 보정을 분담하여 정지한 바디는 밀지 않는다.
-                        correctionWeightA = moveDeltaA.magnitude;
-                        correctionWeightB = moveDeltaB.magnitude;
-                        totalWeight = correctionWeightA + correctionWeightB;
+                        var bodyIndex = solveBodyA ? bodyAIndex : bodyBIndex;
+                        var correction = solveBodyA ? contact.SeparationMtv : -contact.SeparationMtv;
+                        dynamicBodies[bodyIndex].ApplyCorrection(correction);
+                        discreteMoveDeltas[bodyIndex] += correction;
                     }
-
-                    if (totalWeight <= MinMoveDistance)
+                    else
                     {
-                        continue;
+                        // 서로 지나쳐 접촉 법선이 뒤집히면 접근한 바디 대신 상대 바디가 보정될 수 있다.
+                        var moveDeltaA = discreteMoveDeltas[bodyAIndex];
+                        var moveDeltaB = discreteMoveDeltas[bodyBIndex];
+                        var normal = contact.SeparationNormal;
+
+                        // 바디 A의 법선 안쪽 이동량
+                        var correctionWeightA = Mathf.Max(0f, Vector2.Dot(moveDeltaA, -normal));
+                        // 바디 B의 법선 안쪽 이동량
+                        var correctionWeightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
+                        // 두 바디의 법선 안쪽 이동량 합. 충돌 전 간격을 좁힌 이동도 포함되므로 겹침 크기와 다를 수 있다.
+                        var totalWeight = correctionWeightA + correctionWeightB;
+                        // 이동 후 법선에 안쪽 이동 성분이 없는 경우
+                        if (totalWeight <= MinMoveDistance)
+                        {
+                            // 이동량 크기로 보정을 분담하여 정지한 바디는 밀지 않는다.
+                            correctionWeightA = moveDeltaA.magnitude;
+                            correctionWeightB = moveDeltaB.magnitude;
+                            totalWeight = correctionWeightA + correctionWeightB;
+                        }
+
+                        if (totalWeight <= MinMoveDistance)
+                        {
+                            continue;
+                        }
+
+                        // 각 바디의 가중치 비율에 따라 MTV를 분담한다.
+                        // A는 법선 방향으로, B는 반대 방향으로 보정한다.
+                        var correctionA = contact.SeparationMtv * (correctionWeightA / totalWeight);
+                        var correctionB = -contact.SeparationMtv * (correctionWeightB / totalWeight);
+
+                        // 보정 적용
+                        bodyA.ApplyCorrection(correctionA);
+                        bodyB.ApplyCorrection(correctionB);
+
+                        discreteMoveDeltas[bodyAIndex] += correctionA;
+                        discreteMoveDeltas[bodyBIndex] += correctionB;
+
                     }
-
-                    // 각 바디의 가중치 비율에 따라 MTV를 분담한다.
-                    // A는 법선 방향으로, B는 반대 방향으로 보정한다.
-                    var correctionA = contact.SeparationMtv * (correctionWeightA / totalWeight);
-                    var correctionB = -contact.SeparationMtv * (correctionWeightB / totalWeight);
-
-                    // 보정 적용
-                    bodyA.ApplyCorrection(correctionA);
-                    bodyB.ApplyCorrection(correctionB);
-
-                    discreteMoveDeltas[bodyAIndex] += correctionA;
-                    discreteMoveDeltas[bodyBIndex] += correctionB;
 
                     hasCollision = true;
                 }

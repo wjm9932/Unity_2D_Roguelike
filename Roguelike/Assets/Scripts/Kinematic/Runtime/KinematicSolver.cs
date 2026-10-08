@@ -66,7 +66,7 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (!dynamicBody.TryCollide(staticBody, out var contact))
+                    if (!dynamicBody.CanCollideWith(staticBody) || !dynamicBody.TryCollide(staticBody, out var contact))
                     {
                         continue;
                     }
@@ -90,6 +90,13 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
+                    var solveBodyA = bodyA.CanCollideWith(bodyB);
+                    var solveBodyB = bodyB.CanCollideWith(bodyA);
+
+                    if (!solveBodyA && !solveBodyB)
+                    {
+                        continue;
+                    }
 
                     // 충돌 검사
                     if (!bodyA.TryCollide(bodyB, out var contact))
@@ -97,9 +104,16 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
-                    var halfMtv = contact.SeparationMtv * 0.5f;
-                    bodyA.ApplyCorrection(halfMtv);
-                    bodyB.ApplyCorrection(-halfMtv);
+                    // 양쪽이 반응하면 MTV를 나누고, 한쪽만 반응하면 그 바디가 전부 보정한다.
+                    if (solveBodyA)
+                    {
+                        bodyA.ApplyCorrection(contact.SeparationMtv * (solveBodyB ? 0.5f : 1f));
+                    }
+
+                    if (solveBodyB)
+                    {
+                        bodyB.ApplyCorrection(-contact.SeparationMtv * (solveBodyA ? 0.5f : 1f));
+                    }
 
                     hasCollision = true;
                 }
