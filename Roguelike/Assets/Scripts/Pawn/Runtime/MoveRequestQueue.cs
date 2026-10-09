@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Pawn.Runtime
 {
-    internal sealed class MoveRequestQueue
+    internal sealed class MoveRequestQueue : IMoveRequestQueue
     {
         private readonly Queue<MoveRequest> moveRequests = new();
 
@@ -12,9 +12,9 @@ namespace Pawn.Runtime
 
         internal MoveRequestQueue() => Receiver = new RequestReceiver(moveRequests);
 
-        internal bool TryDequeue(out MoveRequest moveRequest) => moveRequests.TryDequeue(out moveRequest);
+        bool IMoveRequestQueue.TryDequeue(out MoveRequest moveRequest) => moveRequests.TryDequeue(out moveRequest);
 
-        internal void Clear() => moveRequests.Clear();
+        void IMoveRequestQueue.Clear() => moveRequests.Clear();
 
         private sealed class RequestReceiver : IMoveRequestReceiver
         {
