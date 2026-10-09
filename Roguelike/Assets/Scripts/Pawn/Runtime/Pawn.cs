@@ -14,14 +14,14 @@ namespace Pawn.Runtime
         private IPawnController pawnController;
         private IPawnStatsBehaviour pawnStatsBehaviour;
         private IPawnBehaviour pawnBehaviour;
-        private IPawnMovement pawnMovement;
+        private IPawnMover pawnMover;
 
-        internal Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMovement movement)
+        internal Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMover mover)
         {
             pawnController = controller;
             pawnStatsBehaviour = statsBehaviour;
             pawnBehaviour = behaviour;
-            pawnMovement = movement;
+            pawnMover = mover;
 
             this.RegisterConsumeMoveRequest();
         }
@@ -38,7 +38,7 @@ namespace Pawn.Runtime
             var dt = TimeManager.Instance.InGameDeltaTime;
 
             // 이동 요청은 큐에 쌓아놓고 한번에 처리
-            pawnMovement.OnMove(dt);
+            pawnMover.OnMove(dt);
         }
 
         public bool OnEvent(Event e)
@@ -50,7 +50,7 @@ namespace Pawn.Runtime
         {
             this.UnregisterConsumeMoveRequest();
 
-            pawnMovement.Dispose();
+            pawnMover.Dispose();
         }
     }
 }

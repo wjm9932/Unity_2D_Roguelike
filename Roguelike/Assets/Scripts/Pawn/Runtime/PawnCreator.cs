@@ -20,9 +20,10 @@ namespace Pawn.Runtime
 
             var controller = new ManualPawnController();
             var statsBehaviour = new PawnStatsBehaviour(pawnDefinition.PawnStatsDefinition);
-            var movement = new PawnMovement(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnStatsDefinition.AccelerationCurve);
-            var behaviour = new PawnBehaviour(container.transform, movement, pawnDefinition.PawnStatsDefinition);
-            var pawn = new Pawn(controller, statsBehaviour, behaviour, movement);
+            var moveRequests = new MoveRequestQueue();
+            var mover = new PawnMover(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnStatsDefinition.AccelerationCurve, moveRequests);
+            var behaviour = new PawnBehaviour(container.transform, moveRequests.Receiver, pawnDefinition.PawnStatsDefinition);
+            var pawn = new Pawn(controller, statsBehaviour, behaviour, mover);
 
             // 이 어뎁터 구조는 고민 필요
             var adapter = container.AddComponent<PawnAdapter>();

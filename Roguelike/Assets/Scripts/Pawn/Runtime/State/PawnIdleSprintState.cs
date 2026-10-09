@@ -1,5 +1,6 @@
 ﻿using Input;
 using Input.Controls;
+using Pawn.Data;
 using Pawn.Interface;
 using StateMachine;
 
