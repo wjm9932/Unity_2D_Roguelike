@@ -1,5 +1,4 @@
 ﻿using Kinematic.Data;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -10,8 +9,6 @@ namespace Kinematic.Runtime
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
         private Vector2? pendingTeleportPosition;
-        private static readonly int ghostLayerMask = LayerMask.GetMask("Pawn");
-        private readonly HashSet<KinematicBody> ghostOverlaps = new();
 
 #if UNITY_EDITOR
         private Vector2 debugStartPosition;
@@ -33,15 +30,9 @@ namespace Kinematic.Runtime
             Debug.DrawLine(center, center + (Vector3)(direction * 2f), color, 0f, false);
         }
 #endif
-
-        public ColliderInfo Shape { get; }
         public int Layer => Shape.Layer;
-        public LayerMask CollidableLayer { get; }
+        public ColliderInfo Shape { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
-        internal bool IsStatic { get; }
-        internal bool IsGhost { get; private set; }
-        internal bool NeedsGhostOverlapCheck { get; private set; }
-        internal bool HasGhostOverlaps => ghostOverlaps.Count > 0;
         internal AABB Bounds
         {
             get
@@ -56,53 +47,17 @@ namespace Kinematic.Runtime
                 return AABB.Create(Center, extents);
             }
         }
+        internal bool IsStatic { get; }
+        internal KinematicGhostState Ghost { get; }
 
-        public KinematicBody(Transform transform, ColliderInfo shape, bool isStatic, int collidableLayer = ~0)
+        public KinematicBody(Transform transform, ColliderInfo shape, bool isStatic)
         {
             target = transform;
             anchorPosition = transform.position;
             Shape = shape;
             IsStatic = isStatic;
-            CollidableLayer = collidableLayer;
+            Ghost = new KinematicGhostState(this);
         }
-
-        public void Move(Vector2 moveDelta)
-        {
-            Debug.Assert(!IsStatic, $"Request Move to static body: {target.name}");
-
-            pendingMoveDelta += moveDelta;
-        }
-
-        public void SetGhost(bool isGhost)
-        {
-            if (IsGhost == isGhost) return;
-
-            // 복귀할 때 이미 겹친 Pawn만 기록하고, 위치 보정 없이 직접 빠져나오도록 한다.
-            NeedsGhostOverlapCheck = !isGhost;
-            if (isGhost) ghostOverlaps.Clear();
-            IsGhost = isGhost;
-        }
-
-        internal bool CanGhostThrough(KinematicBody body) => (ghostLayerMask & (1 << body.Layer)) != 0;
-
-        internal void TrackGhostOverlap(KinematicBody body) => ghostOverlaps.Add(body);
-
-        internal bool HasGhostOverlap(KinematicBody body) => ghostOverlaps.Contains(body) || body.ghostOverlaps.Contains(this);
-
-        internal void CompleteGhostOverlapCheck() => NeedsGhostOverlapCheck = false;
-
-        internal void RemoveSeparatedGhostOverlaps() => ghostOverlaps.RemoveWhere(ShouldRemoveGhostOverlap);
-
-        private bool ShouldRemoveGhostOverlap(KinematicBody body)
-        {
-            return IsGhost || body.IsGhost
-                || (!this.CanCollideWith(body) && !body.CanCollideWith(this))
-                || !this.TryCollide(body, out _);
-        }
-
-        internal void RemoveGhostOverlap(KinematicBody body) => ghostOverlaps.Remove(body);
-
-        internal void ClearGhostOverlaps() => ghostOverlaps.Clear();
 
         public void Teleport(Vector2 position)
         {
@@ -112,6 +67,15 @@ namespace Kinematic.Runtime
             // Teleport와 Cast의 호출 순서가 조회 결과에 영향을 주지 않도록 Solve 시점에 일반 이동과 함께 일괄 적용한다.
             pendingTeleportPosition = position;
         }
+
+        public void Move(Vector2 moveDelta)
+        {
+            Debug.Assert(!IsStatic, $"Request Move to static body: {target.name}");
+
+            pendingMoveDelta += moveDelta;
+        }
+
+        public void SetGhost(bool isGhost) => Ghost.SetGhost(isGhost);
 
         internal void ApplyTeleport()
         {

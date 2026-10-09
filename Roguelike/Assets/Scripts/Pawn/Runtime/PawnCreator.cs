@@ -20,7 +20,7 @@ namespace Pawn.Runtime
 
             var controller = new ManualPawnController();
             var statsBehaviour = new PawnStatsBehaviour(pawnDefinition.PawnStatsDefinition);
-            var movement = new PawnMovement(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnStatsDefinition.AccelerationCurve, pawnDefinition.PawnAssetDefinition.CollidableLayer);
+            var movement = new PawnMovement(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnStatsDefinition.AccelerationCurve);
             var behaviour = new PawnBehaviour(container.transform, movement, pawnDefinition.PawnStatsDefinition);
             var pawn = new Pawn(controller, statsBehaviour, behaviour, movement);
 

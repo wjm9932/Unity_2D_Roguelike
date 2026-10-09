@@ -27,7 +27,7 @@ public static class Bootstrap
         await StaticDataRepository.LoadAsync();
 
         // 이벤트로 Stage Loaded 이벤트 뿌리기 전까지만 여기서 초기화
-        KinematicWorld.Init(new AABB(new Vector2(-10f, -10f), new Vector2(10f, 10f)), useSweep: false);
+        KinematicWorld.Init(new AABB(new Vector2(-10f, -10f), new Vector2(10f, 10f)), useSweep: true);
 
         await Game.Runtime.Game.Instance.ChangeScene(SceneId.Battle1);
     }

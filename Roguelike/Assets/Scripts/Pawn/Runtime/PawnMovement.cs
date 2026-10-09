@@ -13,9 +13,9 @@ namespace Pawn.Runtime
         private AnimationCurve accelerationCurve;
         private float accelElapsedTime;
 
-        internal PawnMovement(Transform owner, ColliderInfo colldierInfo, AnimationCurve accelCurve, int collidableLayer = ~0)
+        internal PawnMovement(Transform owner, ColliderInfo colldierInfo, AnimationCurve accelCurve)
         {
-            kinematicBody = new KinematicBody(owner, colldierInfo, false, collidableLayer);
+            kinematicBody = new KinematicBody(owner, colldierInfo, false);
             accelerationCurve = accelCurve;
 
             KinematicWorld.Register(kinematicBody);
@@ -36,6 +36,8 @@ namespace Pawn.Runtime
             var teleportPosition = Vector2.zero;
             var hasGhost = false;
             var ghostVelocity = Vector2.zero;
+
+            kinematicBody.SetGhost(false);
 
             // 이번 프레임에 들어온 이동 요청 순회하면서 일괄 처리
             while (moveRequests.TryDequeue(out var request))
@@ -66,9 +68,6 @@ namespace Pawn.Runtime
                 }
             }
 
-            // 고스트 요청이 없는 프레임에는 충돌을 복구하고, 이미 겹친 Pawn은 위치 보정 없이 빠져나오도록 한다.
-            kinematicBody.SetGhost(hasGhost);
-
             if (hasTeleport == true)
             {
                 kinematicBody.Teleport(teleportPosition);
@@ -77,6 +76,7 @@ namespace Pawn.Runtime
 
             if (hasGhost)
             {
+                kinematicBody.SetGhost(true);
                 kinematicBody.Move(ghostVelocity * dt);
                 return;
             }

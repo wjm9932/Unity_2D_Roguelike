@@ -1,5 +1,4 @@
 using Kinematic.Interface;
-using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
 
 namespace Kinematic.Runtime
@@ -22,18 +21,28 @@ namespace Kinematic.Runtime
 
         internal void Solve()
         {
-            // Teleport 요청이 있다면 Teleport 적용
+            // Teleport 요청 적용
             HandleTeleport();
 
+            // Teleport로 분리된 기존 겹침 기록 정리
+            TryRemoveSeparatedGhostOverlaps();
+
+            // Ghost 종료 시 겹친 쌍을 기록하여 초기 MTV에서 제외
             UpdateGhostOverlaps();
 
-            // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
+            // 초기 겹침 해소
             SolveInitialCollisions();
 
+            // 초기 보정으로 분리된 겹침 기록 정리
+            TryRemoveSeparatedGhostOverlaps();
+
+            // 이동 처리
             movementSolver.Solve();
 
-            RemoveSeparatedGhostOverlaps();
+            // 이동으로 분리된 겹침 기록 정리
+            TryRemoveSeparatedGhostOverlaps();
 
+            // Transform 동기화
             SyncDynamicTransforms();
         }
 
@@ -61,13 +70,13 @@ namespace Kinematic.Runtime
 
         private void UpdateGhostOverlaps()
         {
-            RemoveSeparatedGhostOverlaps();
-
             foreach (var body in dynamicBodies)
             {
-                if (!body.NeedsGhostOverlapCheck) continue;
+                // 고스트가 끝나서 겹침을 체크해야하는지 여부
+                if (body.Ghost.NeedsGhostOverlapCheck == false) continue;
 
                 staticBodies.Query(body.Bounds, queryResult);
+
                 foreach (var other in queryResult)
                 {
                     TryTrackGhostOverlap(body, other);
@@ -78,24 +87,35 @@ namespace Kinematic.Runtime
                     TryTrackGhostOverlap(body, other);
                 }
 
-                body.CompleteGhostOverlapCheck();
+                body.Ghost.CompleteGhostOverlapCheck();
             }
         }
 
         private static void TryTrackGhostOverlap(KinematicBody body, KinematicBody other)
         {
-            if (body == other || !body.CanGhostThrough(other)) return;
-            if (!body.CanCollideWith(other) && !other.CanCollideWith(body)) return;
+            if (body == other || body.Ghost.CanGhostThrough(other) == false)
+            {
+                return;
+            }
+
+            if (body.CanCollideWith(other) == false)
+            {
+                return;
+            }
 
             // 대쉬 종료 시 이미 겹친 쌍에만 MTV 예외를 적용한다.
-            if (body.TryCollide(other, out _)) body.TrackGhostOverlap(other);
+            if (body.TryCollide(other, out _))
+            {
+                // 고스트가 끝난 후 겹쳐있는 pawn들을 수집한다.
+                body.Ghost.TrackGhostOverlap(other);
+            }
         }
 
-        private void RemoveSeparatedGhostOverlaps()
+        private void TryRemoveSeparatedGhostOverlaps()
         {
             foreach (var body in dynamicBodies)
             {
-                body.RemoveSeparatedGhostOverlaps();
+                body.Ghost.TryRemoveSeparatedGhostOverlaps();
             }
         }
 
@@ -110,7 +130,7 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (dynamicBody.HasGhostOverlap(staticBody)) continue;
+                    if (dynamicBody.Ghost.HasGhostOverlap(staticBody)) continue;
 
                     if (!dynamicBody.CanCollideWith(staticBody) || !dynamicBody.TryCollide(staticBody, out var contact))
                     {
@@ -136,32 +156,26 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
-                    if (bodyA.HasGhostOverlap(bodyB)) continue;
 
-                    var ShouldSolveBodyA = bodyA.CanCollideWith(bodyB);
-                    var ShouldSolveBodyB = bodyB.CanCollideWith(bodyA);
+                    if (bodyA.Ghost.HasGhostOverlap(bodyB))
+                    {
+                        continue;
+                    }
 
-                    if (!ShouldSolveBodyA && !ShouldSolveBodyB)
+                    if (bodyA.CanCollideWith(bodyB) == false)
                     {
                         continue;
                     }
 
                     // 충돌 검사
-                    if (!bodyA.TryCollide(bodyB, out var contact))
+                    if (bodyA.TryCollide(bodyB, out var contact) == false)
                     {
                         continue;
                     }
 
-                    // 양쪽이 반응하면 MTV를 나누고, 한쪽만 반응하면 그 바디가 전부 보정한다.
-                    if (ShouldSolveBodyA)
-                    {
-                        bodyA.ApplyCorrection(contact.SeparationMtv * (ShouldSolveBodyB ? 0.5f : 1f));
-                    }
-
-                    if (ShouldSolveBodyB)
-                    {
-                        bodyB.ApplyCorrection(-contact.SeparationMtv * (ShouldSolveBodyA ? 0.5f : 1f));
-                    }
+                    // 두 동적 바디가 초기 겹침의 MTV를 절반씩 분담한다.
+                    bodyA.ApplyCorrection(contact.SeparationMtv * 0.5f);
+                    bodyB.ApplyCorrection(-contact.SeparationMtv * 0.5f);
 
                     hasCollision = true;
                 }
