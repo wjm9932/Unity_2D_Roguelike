@@ -40,8 +40,69 @@ namespace Kinematic.Runtime
             {
                 var moveDelta = body.ConsumeMoveDelta();
                 discreteMoveDeltas.Add(moveDelta);
-                body.ApplyMovement(moveDelta);
             }
+
+            SlideGhostOverlaps();
+
+            for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
+            {
+                dynamicBodies[bodyIndex].ApplyMovement(discreteMoveDeltas[bodyIndex]);
+            }
+        }
+
+        private void SlideGhostOverlaps()
+        {
+            var hasGhostOverlap = false;
+            foreach (var body in dynamicBodies)
+            {
+                if (!body.HasGhostOverlaps) continue;
+                hasGhostOverlap = true;
+                break;
+            }
+
+            if (!hasGhostOverlap) return;
+
+            // 기존 겹침은 밀어내지 않고, 상대 이동이 겹침을 깊게 만드는 경우 안쪽 성분만 제거한다.
+            for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
+            {
+                var hasSlide = false;
+                for (var bodyAIndex = 0; bodyAIndex < dynamicBodies.Count; bodyAIndex++)
+                {
+                    var bodyA = dynamicBodies[bodyAIndex];
+                    staticBodies.Query(bodyA.Bounds, queryResult);
+                    foreach (var bodyB in queryResult)
+                    {
+                        if (!bodyA.HasGhostOverlap(bodyB) || !bodyA.CanCollideWith(bodyB)) continue;
+                        if (!bodyA.TryCollide(bodyB, out var contact)) continue;
+
+                        hasSlide |= SlideGhostMovement(bodyAIndex, contact.SeparationNormal);
+                    }
+
+                    for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
+                    {
+                        var bodyB = dynamicBodies[bodyBIndex];
+                        if (!bodyA.HasGhostOverlap(bodyB) || !bodyA.TryCollide(bodyB, out var contact)) continue;
+
+                        var relativeMoveDelta = discreteMoveDeltas[bodyAIndex] - discreteMoveDeltas[bodyBIndex];
+                        if (Vector2.Dot(relativeMoveDelta, contact.SeparationNormal) >= -MinMoveDistance) continue;
+
+                        if (bodyA.CanCollideWith(bodyB)) hasSlide |= SlideGhostMovement(bodyAIndex, contact.SeparationNormal);
+                        if (bodyB.CanCollideWith(bodyA)) hasSlide |= SlideGhostMovement(bodyBIndex, -contact.SeparationNormal);
+                    }
+                }
+
+                if (!hasSlide) break;
+            }
+        }
+
+        private bool SlideGhostMovement(int bodyIndex, Vector2 normal)
+        {
+            var moveDelta = discreteMoveDeltas[bodyIndex];
+            var intoSurface = Vector2.Dot(moveDelta, normal);
+            if (intoSurface >= -MinMoveDistance) return false;
+
+            discreteMoveDeltas[bodyIndex] = moveDelta - normal * intoSurface;
+            return true;
         }
 
         private void ResolveDiscreteCollisions()
@@ -69,6 +130,8 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
+                    if (dynamicBody.HasGhostOverlap(staticBody)) continue;
+
                     if (!dynamicBody.CanCollideWith(staticBody) || !dynamicBody.TryCollide(staticBody, out var contact))
                     {
                         continue;
@@ -94,6 +157,8 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
+                    if (bodyA.HasGhostOverlap(bodyB)) continue;
+
                     var ShouldSolveBodyA = bodyA.CanCollideWith(bodyB);
                     var ShouldSolveBodyB = bodyB.CanCollideWith(bodyA);
 

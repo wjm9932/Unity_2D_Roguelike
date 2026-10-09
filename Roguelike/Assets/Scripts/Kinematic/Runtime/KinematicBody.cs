@@ -1,4 +1,5 @@
 ﻿using Kinematic.Data;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -10,6 +11,7 @@ namespace Kinematic.Runtime
         private Vector2 pendingMoveDelta;
         private Vector2? pendingTeleportPosition;
         private static readonly int ghostLayerMask = LayerMask.GetMask("Pawn");
+        private readonly HashSet<KinematicBody> ghostOverlaps = new();
 
 #if UNITY_EDITOR
         private Vector2 debugStartPosition;
@@ -38,7 +40,8 @@ namespace Kinematic.Runtime
         public Vector2 Center => anchorPosition + Shape.Offset;
         internal bool IsStatic { get; }
         internal bool IsGhost { get; private set; }
-        internal bool NeedsGhostRecovery { get; private set; }
+        internal bool NeedsGhostOverlapCheck { get; private set; }
+        internal bool HasGhostOverlaps => ghostOverlaps.Count > 0;
         internal AABB Bounds
         {
             get
@@ -74,14 +77,32 @@ namespace Kinematic.Runtime
         {
             if (IsGhost == isGhost) return;
 
-            // 고스트에서 복귀한 바디가 기존 겹침을 해소하도록 기록한다.
-            NeedsGhostRecovery = !isGhost;
+            // 복귀할 때 이미 겹친 Pawn만 기록하고, 위치 보정 없이 직접 빠져나오도록 한다.
+            NeedsGhostOverlapCheck = !isGhost;
+            if (isGhost) ghostOverlaps.Clear();
             IsGhost = isGhost;
         }
 
         internal bool CanGhostThrough(KinematicBody body) => (ghostLayerMask & (1 << body.Layer)) != 0;
 
-        internal void CompleteGhostRecovery() => NeedsGhostRecovery = false;
+        internal void TrackGhostOverlap(KinematicBody body) => ghostOverlaps.Add(body);
+
+        internal bool HasGhostOverlap(KinematicBody body) => ghostOverlaps.Contains(body) || body.ghostOverlaps.Contains(this);
+
+        internal void CompleteGhostOverlapCheck() => NeedsGhostOverlapCheck = false;
+
+        internal void RemoveSeparatedGhostOverlaps() => ghostOverlaps.RemoveWhere(ShouldRemoveGhostOverlap);
+
+        private bool ShouldRemoveGhostOverlap(KinematicBody body)
+        {
+            return IsGhost || body.IsGhost
+                || (!this.CanCollideWith(body) && !body.CanCollideWith(this))
+                || !this.TryCollide(body, out _);
+        }
+
+        internal void RemoveGhostOverlap(KinematicBody body) => ghostOverlaps.Remove(body);
+
+        internal void ClearGhostOverlaps() => ghostOverlaps.Clear();
 
         public void Teleport(Vector2 position)
         {

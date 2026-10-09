@@ -66,7 +66,7 @@ namespace Pawn.Runtime
                 }
             }
 
-            // 고스트 요청이 없는 프레임에는 충돌을 복구하고 초기 겹침을 해소한다.
+            // 고스트 요청이 없는 프레임에는 충돌을 복구하고, 이미 겹친 Pawn은 위치 보정 없이 빠져나오도록 한다.
             kinematicBody.SetGhost(hasGhost);
 
             if (hasTeleport == true)

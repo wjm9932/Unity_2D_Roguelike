@@ -45,6 +45,12 @@ namespace Kinematic.Runtime
         {
             if (isInit == false) return;
 
+            body.ClearGhostOverlaps();
+            foreach (var dynamicBody in dynamicBodies)
+            {
+                dynamicBody.RemoveGhostOverlap(body);
+            }
+
             if (body.IsStatic)
             {
                 staticBodies.Remove(body);
