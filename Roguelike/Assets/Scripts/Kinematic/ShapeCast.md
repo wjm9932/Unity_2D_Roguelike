@@ -13,8 +13,8 @@ Cast는 형상을 지정한 변위만큼 이동시켰을 때 처음 접촉하는
 
 | 계층 | 책임 |
 | --- | --- |
-| `Kinematics` | 게임 로직에 `CircleCast`, `BoxCast`, `ShapeCast` 제공 |
-| `KinematicCast` | 후보 조회와 가장 가까운 결과 선택 |
+| `Kinematics` | 게임 로직에 `CircleCast`, `BoxCast`, `ShapeCast`와 각 `CastAll` 제공 |
+| `KinematicCast` | 후보 조회와 가장 가까운 결과 선택 또는 전체 결과 수집 |
 | `KinematicShapeCast` | 한 형상 쌍의 이동 경로 교차 계산 |
 
 공개 Cast는 정적 바디와 동적 바디를 모두 검사한다. 조회 시점의 대상 위치를 고정하여 검사하며, 대상의 아직 적용되지 않은 이동 요청은 고려하지 않는다. 동적 쌍의 상대 이동은 [Sweep 솔버](Sweep.md)가 별도로 구성한다.
@@ -31,7 +31,25 @@ Cast는 형상을 지정한 변위만큼 이동시켰을 때 처음 접촉하는
 
 AABB 조회는 검사 후보를 줄이는 Broad Phase다. 실제로 닿는지 확인하는 Narrow Phase는 형상별 Cast가 담당한다. `ShapeCast(body, ...)`는 요청 바디 자신을 제외하며, 원·박스 Cast도 `ignoredBody`를 지정할 수 있다.
 
-결과는 하나만 반환한다. 같은 이동 비율의 결과는 이미 선택한 결과를 유지하므로 후보 순서가 동률 선택에 영향을 준다. Sweep은 같은 시점의 접촉들을 모아 처리하는 별도의 선택 과정을 사용한다.
+단일 Cast는 결과를 하나만 반환한다. 같은 이동 비율의 결과는 이미 선택한 결과를 유지하므로 후보 순서가 동률 선택에 영향을 준다. Sweep은 같은 시점의 접촉들을 모아 처리하는 별도의 선택 과정을 사용한다.
+
+## 경로 전체 조회
+
+`CircleCastAll`, `BoxCastAll`, `ShapeCastAll`은 같은 후보 조회와 형상별 검사를 사용해 경로상 모든 바디의 첫 접촉을 수집한다. 앞의 바디에 닿아도 조회를 중단하지 않으므로 뒤의 바디도 결과에 포함된다.
+
+```csharp
+private readonly List<ShapeCastHit> dashHits = new();
+
+var count = Kinematics.ShapeCastAll(body, dashMoveDelta, dashHits, LayerMask.GetMask("Pawn"));
+```
+
+- 전달한 목록을 매 호출마다 비우고 채우며, 반환값은 결과 수다. 목록을 재사용할 수 있다.
+- `Distance` 오름차순으로 정렬하므로 첫 결과는 가장 가까운 접촉, 마지막 결과는 가장 먼 접촉이다. 거리가 같은 결과 사이의 순서는 보장하지 않는다.
+- 기본 레이어 마스크는 Everything이다. `ShapeCastAll`은 요청 바디 자신을 제외하고, 원·박스 조회는 `ignoredBody`를 지정할 수 있다.
+- 시작부터 겹친 바디는 거리 0으로 포함한다. 영 변위는 빈 결과를 반환한다.
+- 쿼리는 Ghost 상태와 Layer Collision Matrix에 따른 충돌 반응과 독립적으로 지정한 레이어를 검사한다.
+
+`Distance`는 이동 바디가 처음 접촉할 때까지 이동한 거리이며 대상 중심까지의 거리가 아니다. 대쉬 종료점이 대상 중심을 넘는지 판단하려면 `hit.Body.Center`를 이동 방향으로 투영해 비교한다. 대쉬 허용 여부와 이동 거리 결정은 호출자가 처리한다.
 
 ## 형상을 점의 이동으로 바꾸는 방식
 
