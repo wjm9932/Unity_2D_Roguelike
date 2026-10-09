@@ -14,7 +14,6 @@ namespace Kinematic.Runtime
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         // 쿼리 결과용 버퍼
         private readonly List<KinematicBody> queryResult = new();
-        private static readonly IComparer<ShapeCastHit> hitDistanceComparer = Comparer<ShapeCastHit>.Create((hitA, hitB) => hitA.Distance.CompareTo(hitB.Distance));
 
         internal KinematicCast(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
         {
@@ -132,15 +131,11 @@ namespace Kinematic.Runtime
                 }
             }
 
-            results.Sort(hitDistanceComparer);
-
             return results.Count;
         }
 
         private bool QueryCandidates(Vector2 origin, in ColliderInfo shape, Vector2 distance)
         {
-            queryResult.Clear();
-
             if (staticBodies == null || distance.sqrMagnitude <= Mathf.Epsilon)
             {
                 return false;

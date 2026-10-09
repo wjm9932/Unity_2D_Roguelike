@@ -44,7 +44,7 @@ var count = Kinematics.ShapeCastAll(body, dashMoveDelta, dashHits, LayerMask.Get
 ```
 
 - 전달한 목록을 매 호출마다 비우고 채우며, 반환값은 결과 수다. 목록을 재사용할 수 있다.
-- `Distance` 오름차순으로 정렬하므로 첫 결과는 가장 가까운 접촉, 마지막 결과는 가장 먼 접촉이다. 거리가 같은 결과 사이의 순서는 보장하지 않는다.
+- 결과는 거리순을 보장하지 않는다. 정렬이나 가장 가까운·먼 결과 선택은 호출자가 필요한 기준으로 처리한다.
 - 기본 레이어 마스크는 Everything이다. `ShapeCastAll`은 요청 바디 자신을 제외하고, 원·박스 조회는 `ignoredBody`를 지정할 수 있다.
 - 시작부터 겹친 바디는 거리 0으로 포함한다. 영 변위는 빈 결과를 반환한다.
 - 쿼리는 Ghost 상태와 Layer Collision Matrix에 따른 충돌 반응과 독립적으로 지정한 레이어를 검사한다.
