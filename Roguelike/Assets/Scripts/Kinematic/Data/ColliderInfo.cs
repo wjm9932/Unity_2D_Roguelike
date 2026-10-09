@@ -1,4 +1,5 @@
 using CustomAttribute.Runtime;
+using CutomAttributes.Runtime;
 using System;
 using UnityEngine;
 
@@ -29,6 +30,8 @@ namespace Kinematic.Data
     [Serializable]
     public struct ColliderInfo
     {
+        // 충돌 레이어
+        [SerializeField, Layer] private int layer;
         // 충돌체 타입
         [SerializeField] private Shape shape;
         // 오브젝트와 실제 충돌 중심과의 오프셋
@@ -40,6 +43,7 @@ namespace Kinematic.Data
         [ShowIf(nameof(shape), (int)Shape.Box)]
         [SerializeField] private Vector2 halfExtents;
 
+        public int Layer => layer;
         public Shape Shape => shape;
         public Vector2 Offset => offset;
         public float Radius => radius;

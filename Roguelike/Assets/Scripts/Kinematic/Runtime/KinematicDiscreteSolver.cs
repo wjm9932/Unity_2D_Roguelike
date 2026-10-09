@@ -2,7 +2,6 @@ using Kinematic.Data;
 using Kinematic.Interface;
 using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -31,7 +30,6 @@ namespace Kinematic.Runtime
         {
             SolveDiscreteMovements();
             ResolveDiscreteCollisions();
-            discreteMoveDeltas.Clear();
         }
 
         private void SolveDiscreteMovements()
@@ -40,7 +38,11 @@ namespace Kinematic.Runtime
             {
                 var moveDelta = body.ConsumeMoveDelta();
                 discreteMoveDeltas.Add(moveDelta);
-                body.ApplyMovement(moveDelta);
+            }
+
+            for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
+            {
+                dynamicBodies[bodyIndex].ApplyMovement(discreteMoveDeltas[bodyIndex]);
             }
         }
 
@@ -51,11 +53,13 @@ namespace Kinematic.Runtime
                 var hasDynamicStaticCollision = SolveDynamicStaticCollisions();
                 var hasDynamicDynamicCollision = SolveDynamicDynamicCollisions();
 
-                if (!hasDynamicStaticCollision && !hasDynamicDynamicCollision)
+                if (hasDynamicStaticCollision == false && hasDynamicDynamicCollision == false)
                 {
                     break;
                 }
             }
+
+            discreteMoveDeltas.Clear();
         }
 
         private bool SolveDynamicStaticCollisions()
@@ -65,11 +69,12 @@ namespace Kinematic.Runtime
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
                 var dynamicBody = dynamicBodies[bodyIndex];
+
                 staticBodies.Query(dynamicBody.Bounds, queryResult);
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (!dynamicBody.TryCollide(staticBody, out var contact))
+                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.TryCollide(staticBody, out var contact) == false)
                     {
                         continue;
                     }
@@ -95,8 +100,13 @@ namespace Kinematic.Runtime
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
 
+                    if (bodyA.CanCollideWith(bodyB) == false)
+                    {
+                        continue;
+                    }
+
                     // 충돌 검사
-                    if (!bodyA.TryCollide(bodyB, out var contact))
+                    if (bodyA.TryCollide(bodyB, out var contact) == false)
                     {
                         continue;
                     }

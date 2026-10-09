@@ -219,6 +219,7 @@ namespace Kinematic.Runtime
             }
 
             result = new CastResult(Mathf.Clamp01(enterFraction), enterNormal, isGrazing);
+
             return true;
         }
 

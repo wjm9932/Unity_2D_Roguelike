@@ -1,6 +1,7 @@
 using Kinematic.Data;
 using Kinematic.Interface;
 using Kinematic.Runtime.Spatial;
+using log4net.Util;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -109,7 +110,7 @@ namespace Kinematic.Runtime
                     var moveDeltaB = stateB.HasMoveDelta ? stateB.RemainingMoveDelta : Vector2.zero;
 
                     // 양쪽의 이동 경로를 비교해야 정지한 A 쪽으로 이동하는 B도 검출된다.
-                    if (!sweptBoundsA.Overlaps(bodyB.Bounds.GetSweptBounds(moveDeltaB)))
+                    if (sweptBoundsA.Overlaps(bodyB.Bounds.GetSweptBounds(moveDeltaB)) == false)
                     {
                         continue;
                     }
@@ -126,6 +127,11 @@ namespace Kinematic.Runtime
         private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
             var body = dynamicBodies[bodyAIndex];
+            if (body.CanCollideWith(candidate) == false)
+            {
+                return;
+            }
+
             if (KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
             {
                 return;
@@ -151,7 +157,7 @@ namespace Kinematic.Runtime
         private void Sweep()
         {
             // 충돌 처리 횟수는 바디별로 제한하고, 다른 바디의 남은 이동은 계속 처리한다.
-            while (true)
+            while (HasRemainingMoveDelta())
             {
                 if (SweepShapeCast(out var fraction) == false)
                 {
@@ -175,6 +181,19 @@ namespace Kinematic.Runtime
             }
         }
 
+        private bool HasRemainingMoveDelta()
+        {
+            foreach (var state in sweepBodyStates)
+            {
+                if (state.HasMoveDelta)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void SlideSweepBody(int bodyIndex, Vector2 normal)
         {
             var state = sweepBodyStates[bodyIndex];
@@ -183,19 +202,19 @@ namespace Kinematic.Runtime
                 return;
             }
 
-            // 한도에 도달한 바디는 표면 밖으로 이동하더라도 일괄적으로 남은 이동을 포기한다.
-            if (state.SlideIterationCount >= MaxSlideIterationCount)
-            {
-                state.RemainingMoveDelta = Vector2.zero;
-                sweepBodyStates[bodyIndex] = state;
-                return;
-            }
-
             // 남은 이동량을 hit.Normal 벡터에 투영한다.
             // 남은 이동량을 법선 방향으로 투영한다 = 남는 이동량(벡터) 중에 hit.Normal 방향 성분으로 이루어진 부분의 크기를 부호가 있는 스칼라 값으로 구한다. 이 부호를 가지는 크기를 통해 투영 벡터를 구할 수 있다.(hit.Normal 방향 or -hit.Normal 방향)
             var intoSurface = Vector2.Dot(state.RemainingMoveDelta, normal);
             if (intoSurface < 0f)
             {
+                // 추가 슬라이드가 필요한 경우에만 한도를 확인하고 남은 이동을 포기한다.
+                if (state.SlideIterationCount >= MaxSlideIterationCount)
+                {
+                    state.RemainingMoveDelta = Vector2.zero;
+                    sweepBodyStates[bodyIndex] = state;
+                    return;
+                }
+
                 state.SlideIterationCount++;
                 // 내적 값이 음수이기 때문에 hit.Normal과 반대 방향인 투영 벡터가 만들어진다. 즉, 법선 반대 방향인 충돌 표면 안쪽을 향하는 벡터
                 // hit.Normal * intoSurface = 남은 이동량 중 법선 반대 방향인 충돌 표면 안쪽을 향하는 성분만 가진 벡터(intoSurface가 음수이기 때문) = 투영 벡터

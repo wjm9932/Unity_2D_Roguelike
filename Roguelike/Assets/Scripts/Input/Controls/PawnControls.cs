@@ -24,6 +24,7 @@ namespace Input.Controls
     public interface IPawnControls
     {
         public ReadOnlyReactiveProperty<MoveInfo> Move { get; }
+        public ReadOnlyReactiveProperty<bool> Dash { get; }
 
 #if UNITY_EDITOR
         public ReadOnlyReactiveProperty<MoveInfo> TestMove { get; }
@@ -40,7 +41,10 @@ namespace Input.Controls
     internal partial class PawnControls : IPawnControls
     {
         public ReadOnlyReactiveProperty<MoveInfo> Move => move;
+        public ReadOnlyReactiveProperty<bool> Dash => dash;
+
         private readonly ReactiveProperty<MoveInfo> move = new();
+        private readonly ReactiveProperty<bool> dash = new();
 
 #if UNITY_EDITOR
         public ReadOnlyReactiveProperty<MoveInfo> TestMove => testMove;
@@ -90,12 +94,13 @@ namespace Input.Controls
             }
 
             public void Register() => actions.AddCallbacks(this);
-
             public void UnRegister() => actions.RemoveCallbacks(this);
 
             public void OnMove(InputAction.CallbackContext context) => controls.move.Value = new MoveInfo(context.ReadValue<Vector2>());
-
+            public void OnDash(InputAction.CallbackContext context) => controls.dash.Value = context.ReadValueAsButton();
+#if UNITY_EDITOR
             public void OnTestMove(InputAction.CallbackContext context) => controls.testMove.Value = new MoveInfo(context.ReadValue<Vector2>());
+#endif
         }
 
         private PawnInputAdapter pawnInputAdapter;

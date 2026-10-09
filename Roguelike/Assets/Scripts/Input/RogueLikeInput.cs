@@ -111,6 +111,16 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""initialStateCheck"": true,
                     ""priority"": 0
+                },
+                {
+                    ""name"": ""Dash"",
+                    ""type"": ""Button"",
+                    ""id"": ""630e20f1-46d4-41a0-9cde-24ca558aea45"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false,
+                    ""priority"": 0
                 }
             ],
             ""bindings"": [
@@ -223,6 +233,17 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
                     ""action"": ""TestMove"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""a9aac857-382f-4ab2-a36e-5aa732f74212"",
+                    ""path"": ""<Keyboard>/space"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Dash"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -233,6 +254,7 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
         m_Pawn = asset.FindActionMap("Pawn", throwIfNotFound: true);
         m_Pawn_Move = m_Pawn.FindAction("Move", throwIfNotFound: true);
         m_Pawn_TestMove = m_Pawn.FindAction("TestMove", throwIfNotFound: true);
+        m_Pawn_Dash = m_Pawn.FindAction("Dash", throwIfNotFound: true);
     }
 
     ~@RogueLikeInput()
@@ -315,6 +337,7 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
     private List<IPawnActions> m_PawnActionsCallbackInterfaces = new List<IPawnActions>();
     private readonly InputAction m_Pawn_Move;
     private readonly InputAction m_Pawn_TestMove;
+    private readonly InputAction m_Pawn_Dash;
     /// <summary>
     /// Provides access to input actions defined in input action map "Pawn".
     /// </summary>
@@ -334,6 +357,10 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Pawn/TestMove".
         /// </summary>
         public InputAction @TestMove => m_Wrapper.m_Pawn_TestMove;
+        /// <summary>
+        /// Provides access to the underlying input action "Pawn/Dash".
+        /// </summary>
+        public InputAction @Dash => m_Wrapper.m_Pawn_Dash;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -366,6 +393,9 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
             @TestMove.started += instance.OnTestMove;
             @TestMove.performed += instance.OnTestMove;
             @TestMove.canceled += instance.OnTestMove;
+            @Dash.started += instance.OnDash;
+            @Dash.performed += instance.OnDash;
+            @Dash.canceled += instance.OnDash;
         }
 
         /// <summary>
@@ -383,6 +413,9 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
             @TestMove.started -= instance.OnTestMove;
             @TestMove.performed -= instance.OnTestMove;
             @TestMove.canceled -= instance.OnTestMove;
+            @Dash.started -= instance.OnDash;
+            @Dash.performed -= instance.OnDash;
+            @Dash.canceled -= instance.OnDash;
         }
 
         /// <summary>
@@ -437,5 +470,12 @@ public partial class @RogueLikeInput: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnTestMove(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Dash" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDash(InputAction.CallbackContext context);
     }
 }

@@ -29,6 +29,8 @@ namespace Kinematic.Runtime
 
         internal void Register(KinematicBody body)
         {
+            if (isInit == false) return;
+
             if (body.IsStatic)
             {
                 staticBodies.Insert(body);
@@ -41,6 +43,8 @@ namespace Kinematic.Runtime
 
         internal void Unregister(KinematicBody body)
         {
+            if (isInit == false) return;
+
             if (body.IsStatic)
             {
                 staticBodies.Remove(body);

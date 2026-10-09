@@ -34,7 +34,7 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 
 `Teleport(position)`은 목적지를 저장한다. 여러 요청이 있으면 마지막 목적지를 사용한다. 바디 자체의 Teleport API는 이미 누적된 Move 요청을 지우지 않으므로, 둘 다 요청되었다면 Teleport 이후의 위치에서 Move를 처리한다.
 
-현재 게임 로직인 `PawnMovement`는 Teleport 요청을 처리하면 그 호출에서 Move 요청을 추가하지 않는다. 이것은 게임 로직의 요청 정책이며, 바디 API의 공통 규칙과는 구분한다.
+현재 게임 로직인 `PawnMover`는 Teleport 요청을 처리하면 그 호출에서 Move 요청을 추가하지 않는다. 이것은 게임 로직의 요청 정책이며, 바디 API의 공통 규칙과는 구분한다.
 
 ## 한 번의 Solve
 
@@ -88,4 +88,4 @@ Cast는 현재 계산 위치를 사용하고, 보관 중인 Move나 Teleport 요
 - [KinematicSimulation](Runtime/KinematicSimulation.cs)
 - [KinematicPlayerLoop](Runtime/KinematicPlayerLoop.cs)
 - [KinematicBodyAdapter](Runtime/KinematicBodyAdapter.cs)
-- [PawnMovement](../Pawn/Runtime/PawnMovement.cs)
+- [PawnMover](../Pawn/Runtime/PawnMover.cs)

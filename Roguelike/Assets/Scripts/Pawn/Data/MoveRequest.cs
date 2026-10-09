@@ -1,6 +1,6 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-namespace Pawn.Interface
+namespace Pawn.Data
 {
     public enum MoveType
     {
@@ -19,20 +19,5 @@ namespace Pawn.Interface
             MoveType = moveType;
             Velocity = velocity;
         }
-    }
-
-    public interface IPawnMovement : IPawnMover, IMoveRequestReceiver
-    {
-        void Dispose();
-    }
-
-    public interface IPawnMover
-    {
-        void OnMove(float dt);
-    }
-
-    public interface IMoveRequestReceiver
-    {
-        public void Enqueue(MoveRequest moveRequest);
     }
 }
