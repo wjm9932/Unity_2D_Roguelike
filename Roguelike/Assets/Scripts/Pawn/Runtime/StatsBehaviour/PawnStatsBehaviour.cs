@@ -1,5 +1,6 @@
 ﻿using EventSystem;
 using Pawn.Interface;
+using Pawn.Data;
 
 namespace Pawn.Runtime.StatsBehaviour
 {
