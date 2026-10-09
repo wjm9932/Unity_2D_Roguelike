@@ -9,8 +9,8 @@ namespace Pawn.Runtime
     internal class PawnMover : IPawnMover
     {
         private readonly IMoveRequestQueue moveRequests;
-        private KinematicBody kinematicBody;
-        private AnimationCurve accelerationCurve;
+        private readonly KinematicBody kinematicBody;
+        private readonly AnimationCurve accelerationCurve;
         private float accelElapsedTime;
 
         internal PawnMover(Transform owner, ColliderInfo colldierInfo, AnimationCurve accelCurve, IMoveRequestQueue requests)
