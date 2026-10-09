@@ -138,10 +138,7 @@ namespace Kinematic.Runtime
                     var bodyB = dynamicBodies[bodyBIndex];
                     if (bodyA.HasGhostOverlap(bodyB)) continue;
 
-                    var ShouldSolveBodyA = bodyA.CanCollideWith(bodyB);
-                    var ShouldSolveBodyB = bodyB.CanCollideWith(bodyA);
-
-                    if (!ShouldSolveBodyA && !ShouldSolveBodyB)
+                    if (bodyA.CanCollideWith(bodyB) == false)
                     {
                         continue;
                     }
@@ -152,16 +149,9 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
-                    // 양쪽이 반응하면 MTV를 나누고, 한쪽만 반응하면 그 바디가 전부 보정한다.
-                    if (ShouldSolveBodyA)
-                    {
-                        bodyA.ApplyCorrection(contact.SeparationMtv * (ShouldSolveBodyB ? 0.5f : 1f));
-                    }
-
-                    if (ShouldSolveBodyB)
-                    {
-                        bodyB.ApplyCorrection(-contact.SeparationMtv * (ShouldSolveBodyA ? 0.5f : 1f));
-                    }
+                    // 일반 겹침은 두 바디가 MTV를 절반씩 나눠 받는다.
+                    bodyA.ApplyCorrection(contact.SeparationMtv * 0.5f);
+                    bodyB.ApplyCorrection(-contact.SeparationMtv * 0.5f);
 
                     hasCollision = true;
                 }

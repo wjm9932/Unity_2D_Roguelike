@@ -36,7 +36,6 @@ namespace Kinematic.Runtime
 
         public ColliderInfo Shape { get; }
         public int Layer => Shape.Layer;
-        public LayerMask CollidableLayer { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
         internal bool IsStatic { get; }
         internal bool IsGhost { get; private set; }
@@ -57,13 +56,12 @@ namespace Kinematic.Runtime
             }
         }
 
-        public KinematicBody(Transform transform, ColliderInfo shape, bool isStatic, int collidableLayer = ~0)
+        public KinematicBody(Transform transform, ColliderInfo shape, bool isStatic)
         {
             target = transform;
             anchorPosition = transform.position;
             Shape = shape;
             IsStatic = isStatic;
-            CollidableLayer = collidableLayer;
         }
 
         public void Move(Vector2 moveDelta)
