@@ -6,7 +6,6 @@ namespace Pawn.Interface
     {
         Active,
         Passive,
-        Ghost,
         Teleport
     }
 

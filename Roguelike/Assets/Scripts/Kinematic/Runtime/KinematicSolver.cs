@@ -25,14 +25,12 @@ namespace Kinematic.Runtime
             // Teleport 요청이 있다면 Teleport 적용
             HandleTeleport();
 
-            UpdateGhostOverlaps();
-
             // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
             SolveInitialCollisions();
 
             movementSolver.Solve();
 
-            RemoveSeparatedGhostOverlaps();
+            CompleteGhostRecovery();
 
             SyncDynamicTransforms();
         }
@@ -52,50 +50,69 @@ namespace Kinematic.Runtime
                 var hasDynamicStaticCollision = SolveInitialDynamicStaticCollisions();
                 var hasDynamicDynamicCollision = SolveInitialDynamicDynamicCollisions();
 
-                if (!hasDynamicStaticCollision && !hasDynamicDynamicCollision)
+                if (hasDynamicStaticCollision == false && hasDynamicDynamicCollision == false)
                 {
                     break;
                 }
             }
         }
 
-        private void UpdateGhostOverlaps()
+        private void CompleteGhostRecovery()
         {
-            RemoveSeparatedGhostOverlaps();
-
             foreach (var body in dynamicBodies)
             {
-                if (!body.NeedsGhostOverlapCheck) continue;
+                if (body.NeedsGhostRecovery == false)
+                {
+                    continue;
+                }
+
+                var hasOverlap = false;
 
                 staticBodies.Query(body.Bounds, queryResult);
+
                 foreach (var other in queryResult)
                 {
-                    TryTrackGhostOverlap(body, other);
+                    if (body.CanGhostThrough(other) == false || body.CanCollideWith(other) == false)
+                    {
+                        continue;
+                    }
+
+                    if (body.TryCollide(other, out _))
+                    {
+                        hasOverlap = true;
+                        break;
+                    }
                 }
 
                 foreach (var other in dynamicBodies)
                 {
-                    TryTrackGhostOverlap(body, other);
+                    if (hasOverlap)
+                    {
+                        break;
+                    }
+
+                    if (body == other || body.CanGhostThrough(other) == false)
+                    {
+                        continue;
+                    }
+
+                    if (body.CanCollideWith(other) == false)
+                    {
+                        continue;
+                    }
+
+                    if (body.TryCollide(other, out _))
+                    {
+                        hasOverlap = true;
+                        break;
+                    }
                 }
 
-                body.CompleteGhostOverlapCheck();
-            }
-        }
-
-        private static void TryTrackGhostOverlap(KinematicBody body, KinematicBody other)
-        {
-            if (body == other || !body.CanGhostThrough(other)) return;
-            if (!body.CanCollideWith(other) && !other.CanCollideWith(body)) return;
-
-            // 대쉬 종료 시 이미 겹친 쌍에만 MTV 예외를 적용한다.
-            if (body.TryCollide(other, out _)) body.TrackGhostOverlap(other);
-        }
-
-        private void RemoveSeparatedGhostOverlaps()
-        {
-            foreach (var body in dynamicBodies)
-            {
-                body.RemoveSeparatedGhostOverlaps();
+                // 반복 한도에 걸려 겹침이 남으면 다음 프레임에도 종료한 바디만 보정한다.
+                if (hasOverlap == false)
+                {
+                    body.NeedsGhostRecovery = false;
+                }
             }
         }
 
@@ -110,9 +127,7 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (dynamicBody.HasGhostOverlap(staticBody)) continue;
-
-                    if (!dynamicBody.CanCollideWith(staticBody) || !dynamicBody.TryCollide(staticBody, out var contact))
+                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.TryCollide(staticBody, out var contact) == false)
                     {
                         continue;
                     }
@@ -136,22 +151,38 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
-                    if (bodyA.HasGhostOverlap(bodyB)) continue;
-
                     if (bodyA.CanCollideWith(bodyB) == false)
                     {
                         continue;
                     }
 
                     // 충돌 검사
-                    if (!bodyA.TryCollide(bodyB, out var contact))
+                    if (bodyA.TryCollide(bodyB, out var contact) == false)
                     {
                         continue;
                     }
 
-                    // 일반 겹침은 두 바디가 MTV를 절반씩 나눠 받는다.
-                    bodyA.ApplyCorrection(contact.SeparationMtv * 0.5f);
-                    bodyB.ApplyCorrection(-contact.SeparationMtv * 0.5f);
+                    var recoverBodyA = bodyA.NeedsGhostRecovery && bodyA.CanGhostThrough(bodyB);
+                    var recoverBodyB = bodyB.NeedsGhostRecovery && bodyB.CanGhostThrough(bodyA);
+
+                    // 한쪽만 고스트를 종료했다면 그 바디가 MTV를 전부 받아 상대를 밀지 않는다.
+                    if (recoverBodyA != recoverBodyB)
+                    {
+                        if (recoverBodyA)
+                        {
+                            bodyA.ApplyCorrection(contact.SeparationMtv);
+                        }
+                        else
+                        {
+                            bodyB.ApplyCorrection(-contact.SeparationMtv);
+                        }
+                    }
+                    else
+                    {
+                        // 일반 겹침은 두 바디가 MTV를 절반씩 나눠 받는다.
+                        bodyA.ApplyCorrection(contact.SeparationMtv * 0.5f);
+                        bodyB.ApplyCorrection(-contact.SeparationMtv * 0.5f);
+                    }
 
                     hasCollision = true;
                 }

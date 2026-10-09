@@ -34,8 +34,6 @@ namespace Pawn.Runtime
             var passiveImpulse = Vector2.zero;
             var hasTeleport = false;
             var teleportPosition = Vector2.zero;
-            var hasGhost = false;
-            var ghostVelocity = Vector2.zero;
 
             // 이번 프레임에 들어온 이동 요청 순회하면서 일괄 처리
             while (moveRequests.TryDequeue(out var request))
@@ -53,11 +51,6 @@ namespace Pawn.Runtime
                         passiveImpulse += request.Velocity;
                         hasPassive = true;
                         break;
-                    // 고스트 이동은 Active보다 우선하며 마지막 요청을 적용한다.
-                    case MoveType.Ghost:
-                        ghostVelocity = request.Velocity;
-                        hasGhost = true;
-                        break;
                     // 마지막 Teleport 요청을 적용하며 다른 이동 요청보다 우선한다.
                     case MoveType.Teleport:
                         teleportPosition = request.Velocity;
@@ -66,18 +59,9 @@ namespace Pawn.Runtime
                 }
             }
 
-            // 고스트 요청이 없는 프레임에는 충돌을 복구하고, 이미 겹친 Pawn은 위치 보정 없이 빠져나오도록 한다.
-            kinematicBody.SetGhost(hasGhost);
-
             if (hasTeleport == true)
             {
                 kinematicBody.Teleport(teleportPosition);
-                return;
-            }
-
-            if (hasGhost)
-            {
-                kinematicBody.Move(ghostVelocity * dt);
                 return;
             }
 
