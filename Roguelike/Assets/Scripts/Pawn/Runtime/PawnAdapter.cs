@@ -7,16 +7,8 @@ namespace Pawn.Runtime
     {
         private Action updatePawn;
 
-        private Action disposePawn;
-
-        internal void Initialize(Action update, Action dispose)
-        {
-            updatePawn = update;
-            disposePawn = dispose;
-        }
+        internal void Initialize(Action update) => updatePawn = update;
 
         private void Update() => updatePawn();
-
-        private void OnDestroy() => disposePawn();
     }
 }

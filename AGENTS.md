@@ -37,7 +37,9 @@
 
 - Unity Editor를 이용한 패키지 resolve 및 컴파일 검증은 sandbox 내부에서 실행하지 않는다.
 - Unity.exe는 Licensing Client IPC 호환성을 위해 일반 사용자 세션에서 실행한다.
+- Unity 컴파일 검증은 PowerShell을 사용하지 않고, Unity.exe를 일반 사용자 세션에서 직접 실행한다.
 - Unity 컴파일을 위한 일반 사용자 세션에서 실행할 때는 사용자에게 승인 받을 필요 없다.
+- Unity 실행 시 기존 `.codex/rules/unity.rules`의 Unity.exe allow 규칙에 매칭되는 명령 형태를 사용한다.
 
 ## Git workflow
 
@@ -46,3 +48,8 @@
 - 사용자가 명시적으로 요청하지 않으면 commit amend, rebase, reset, clean을 실행하지 않는다.
 - force push는 실행하지 않는다.
 - 모든 push는 사용자의 명시적인 승인을 받은 뒤 실행한다.
+
+## Git command execution
+
+- `git add`와 `git commit`은 이미 승인된 명령이므로 사용자에게 다시 승인을 요청하지 않는다.
+- `git add`와 `git commit`은 다른 명령과 결합하지 않고 각각 독립적으로 실행한다.

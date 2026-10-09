@@ -24,7 +24,12 @@ namespace Input.Controls
     public interface IPawnControls
     {
         public ReadOnlyReactiveProperty<MoveInfo> Move { get; }
-        
+        public ReadOnlyReactiveProperty<bool> Dash { get; }
+
+#if UNITY_EDITOR
+        public ReadOnlyReactiveProperty<MoveInfo> TestMove { get; }
+#endif
+
         public void Enable();
 
         public void Disable();
@@ -36,7 +41,15 @@ namespace Input.Controls
     internal partial class PawnControls : IPawnControls
     {
         public ReadOnlyReactiveProperty<MoveInfo> Move => move;
+        public ReadOnlyReactiveProperty<bool> Dash => dash;
+
         private readonly ReactiveProperty<MoveInfo> move = new();
+        private readonly ReactiveProperty<bool> dash = new();
+
+#if UNITY_EDITOR
+        public ReadOnlyReactiveProperty<MoveInfo> TestMove => testMove;
+        private readonly ReactiveProperty<MoveInfo> testMove = new();
+#endif
 
         public void Enable()
         {
@@ -63,8 +76,9 @@ namespace Input.Controls
     internal partial class PawnControls
     {
         /// <summary>
-        /// PawnControls 객체로 접근해서 OnMove 호출 막기 위해 Adapter로 분리
-        /// Adapter는 콜백 등록/해제의 책임을 가진다.
+        /// IPawnControls로 제공한 객체를 IPawnActions로 형변환하여
+        /// 콜백을 직접 호출하는 경로를 차단하기 위해 Adapter로 분리한다.
+        /// Adapter는 콜백 등록과 해제를 담당한다.
         /// </summary>
         private class PawnInputAdapter : IPawnActions
         {
@@ -80,10 +94,13 @@ namespace Input.Controls
             }
 
             public void Register() => actions.AddCallbacks(this);
-
             public void UnRegister() => actions.RemoveCallbacks(this);
 
             public void OnMove(InputAction.CallbackContext context) => controls.move.Value = new MoveInfo(context.ReadValue<Vector2>());
+            public void OnDash(InputAction.CallbackContext context) => controls.dash.Value = context.ReadValueAsButton();
+#if UNITY_EDITOR
+            public void OnTestMove(InputAction.CallbackContext context) => controls.testMove.Value = new MoveInfo(context.ReadValue<Vector2>());
+#endif
         }
 
         private PawnInputAdapter pawnInputAdapter;
