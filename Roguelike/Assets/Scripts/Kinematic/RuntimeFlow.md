@@ -9,9 +9,9 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 
 ## Kinematic 업데이트 시점 및 PlayerLoop 연결
 
-`KinematicPlayerLoop`는 씬 로드 전에 Unity PlayerLoop의 최상위 `Update` 단계 바로 뒤에 Kinematic 처리 단계를 삽입한다. 따라서 일반 Update 단계에서 누적한 요청을 그 뒤의 Kinematic 단계에서 처리한다. `FixedUpdate` 주기로 실행하는 구조는 아니다.
+`GameLoop`는 씬 로드 전에 Unity PlayerLoop의 최상위 `Update` 단계 바로 뒤에 메시지 처리, Pawn 이동 요청 소비, Kinematic Tick을 순서대로 삽입한다. 따라서 일반 Update 단계와 메시지 처리 단계에서 만든 이동 요청을 Pawn이 소비한 뒤, 같은 프레임의 Kinematic 단계에서 처리한다. `FixedUpdate` 주기로 실행하는 구조는 아니다. 전체 순서와 설치 방식은 [GameLoop README](../GameLoop/README.md)에 정리한다.
 
-설치 시 기존 Kinematic 단계를 제거한 뒤 다시 넣어 중복 실행을 방지한다. PlayerLoop는 월드의 Tick을 호출하고, 월드가 아직 초기화되지 않았다면 Tick은 Solve를 실행하지 않는다.
+Kinematic 단계는 `KinematicWorld.Tick()`을 호출하고, 월드가 아직 초기화되지 않았다면 Tick은 Solve를 실행하지 않는다. Transform 반영은 이 단계에서 끝나므로 이후 `LateUpdate()`에서 최종 위치를 읽을 수 있다. Kinematic 단계 이후에 추가한 Move·Teleport 요청은 다음 Tick에서 처리한다.
 
 ## 요청과 계산 위치를 분리하는 방식
 
@@ -64,7 +64,7 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 
 Solve가 진행되는 동안에는 계산 위치를 변경하며, 모든 동적 바디의 Transform은 마지막 동기화 단계에서 반영한다. 보정도 최종 위치에 포함된다.
 
-`KinematicSolver`는 동적 바디의 Transform 위치 제어를 점유한다. 매 프레임 바디의 계산 위치를 Transform에 동기화하므로, 외부 로직은 `Transform.position`을 통해 직접 변경하지 않고 `Move()` 또는 `Teleport()`로 위치 변경을 요청해야 한다. 따라서 외부에서 직접 변경한 Transform 위치는 바디의 계산 위치에 반영되지 않으며, 해당 프레임 Solve의 동기화 단계에서 덮어씌워진다.
+`KinematicSolver`가 동적 바디 Transform의 Position을 전적으로 소유하며 점유한다. 매 프레임 바디의 계산 위치를 Transform에 동기화하므로, 외부 로직은 `Transform.position`을 통해 직접 변경하지 않고 `Move()` 또는 `Teleport()`로 위치 변경을 요청해야 한다. 따라서 외부에서 직접 변경한 Transform 위치는 바디의 계산 위치에 반영되지 않으며, 해당 프레임 Solve의 동기화 단계에서 덮어씌워진다.
 
 Cast는 현재 계산 위치를 사용하고, 보관 중인 Move나 Teleport 요청을 미리 적용하지 않는다. 따라서 Solve 전 조회는 아직 요청이 반영되지 않은 위치를 기준으로 한다. Teleport 요청과 Cast 호출의 순서만으로 일부 바디의 조회 위치가 바뀌지 않도록 한 구조다.
 
@@ -86,6 +86,6 @@ Cast는 현재 계산 위치를 사용하고, 보관 중인 Move나 Teleport 요
 - [KinematicBody](Runtime/KinematicBody.cs)
 - [KinematicSolver](Runtime/KinematicSolver.cs)
 - [KinematicSimulation](Runtime/KinematicSimulation.cs)
-- [KinematicPlayerLoop](Runtime/KinematicPlayerLoop.cs)
+- [GameLoop](../GameLoop/GameLoop.cs)
 - [KinematicBodyAdapter](Runtime/KinematicBodyAdapter.cs)
 - [PawnMover](../Pawn/Runtime/PawnMover.cs)

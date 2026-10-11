@@ -12,6 +12,7 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 | 문서 | 설명 |
 | --- | --- |
 | [실행 흐름](RuntimeFlow.md) | 이동 요청, Teleport, 초기 겹침 해소, PlayerLoop, Transform 반영 |
+| [GameLoop](../GameLoop/README.md) | Unity Update 이후 메시지 처리, Pawn 이동 요청 소비, Kinematic 업데이트 순서 |
 | [Shape Cast](ShapeCast.md) | 후보 조회, 형상 확장, 원 교차, Slab 검사, Rounded Box, 접촉 정보 |
 | [접촉 판정과 MTV](CollisionAndMTV.md) | 현재 위치의 겹침 판정, 형상별 법선과 침투 깊이, 분리 벡터 |
 | [Sweep 이동](Sweep.md) | 상대 이동량, 최초 충돌 시점, 동시 진행, 슬라이딩 |
@@ -55,7 +56,7 @@ Teleport 적용, 초기 겹침 해소, Transform 동기화는 `KinematicSolver`�
 | `KinematicWorld` | 외부에서 사용할 월드 관리 API 제공 |
 | `Kinematics` | 외부에서 사용할 Cast 조회 API 제공 |
 | `KinematicSimulation` | 월드 상태와 바디 목록 소유, 초기화·등록·해제, 솔버 및 Cast 구성 |
-| `KinematicPlayerLoop` | Unity PlayerLoop에 공통 이동 처리 단계 연결 |
+| `GameLoop` | Unity Update 이후 메시지 처리·Pawn 이동 요청 소비·Kinematic Tick 순서 연결 |
 | `KinematicBody` | 계산용 위치와 형상 보관, 이동·Teleport 요청 보관, 결과 위치 반영 |
 | `KinematicBodyAdapter` | Unity 컴포넌트 생명주기와 바디 등록 연결 |
 | `KinematicSolver` | Teleport, 초기 겹침 해소, 이동 솔버 실행, Transform 동기화 |
