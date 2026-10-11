@@ -8,27 +8,27 @@ namespace Pawn.Runtime
     {
         private readonly Queue<MoveRequest> moveRequests = new();
 
-        internal IMoveRequestReceiver Receiver { get; }
+        internal IMoveRequestCollector Collector { get; }
 
         internal MoveRequestQueue()
         {
-            Receiver = new RequestReceiver(moveRequests);
+            Collector = new RequestCollector(moveRequests);
         }
 
         bool IMoveRequestQueue.TryDequeue(out MoveRequest moveRequest) => moveRequests.TryDequeue(out moveRequest);
 
         void IMoveRequestQueue.Clear() => moveRequests.Clear();
 
-        private sealed class RequestReceiver : IMoveRequestReceiver
+        private sealed class RequestCollector : IMoveRequestCollector
         {
             private readonly Queue<MoveRequest> queue;
 
-            internal RequestReceiver(Queue<MoveRequest> queue)
+            internal RequestCollector(Queue<MoveRequest> queue)
             {
                 this.queue = queue;
             }
 
-            void IMoveRequestReceiver.Enqueue(MoveRequest moveRequest) => queue.Enqueue(moveRequest);
+            void IMoveRequestCollector.Enqueue(MoveRequest moveRequest) => queue.Enqueue(moveRequest);
         }
     }
 }

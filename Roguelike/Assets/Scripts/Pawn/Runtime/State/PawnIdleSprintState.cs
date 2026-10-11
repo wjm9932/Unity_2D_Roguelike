@@ -2,18 +2,29 @@
 using Input.Controls;
 using Pawn.Data;
 using Pawn.Interface;
+using R3;
 using StateMachine;
+using System;
+using UnityEngine;
 
 namespace Pawn.Runtime.State
 {
     public class PawnIdleSprintState : PooledState<PawnIdleSprintState>
     {
         private float sprintSpeed;
-        private IMoveRequestReceiver receiver;
+        private IMoveRequestCollector collector;
         private IPawnControls controls;
+
+        private IDisposable dashSubscription;
 
         public override void Enter(IState previousState)
         {
+            dashSubscription = InputManager.Instance.PawnControls.Dash
+                .Where(value => value)
+                .Subscribe(_ => 
+                {
+                    collector.Enqueue(new MoveRequest(MoveType.Passive, 10f * Vector2.right)); 
+                });
         }
 
         public override void Update(float dt)
@@ -24,24 +35,26 @@ namespace Pawn.Runtime.State
 
             var velocity = sprintSpeed * moveInfo.RawValue;
 
-            receiver.Enqueue(new MoveRequest(MoveType.Active, velocity));
+            collector.Enqueue(new MoveRequest(MoveType.Active, velocity));
         }
 
         public override void Exit(IState nextState)
         {
+            dashSubscription.Dispose();
+            dashSubscription = null;
         }
 
         public override void OnDispose()
         {
-            receiver = null;
+            collector = null;
         }
 
-        public static PawnIdleSprintState Create(float sprintSpeed, IMoveRequestReceiver receiver)
+        public static PawnIdleSprintState Create(float sprintSpeed, IMoveRequestCollector receiver)
         {
             var state = GetOrCreate();
 
             state.sprintSpeed = sprintSpeed;
-            state.receiver = receiver;
+            state.collector = receiver;
             state.controls = InputManager.Instance.PawnControls;
 
             return state;

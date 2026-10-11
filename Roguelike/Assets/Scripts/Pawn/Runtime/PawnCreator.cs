@@ -22,7 +22,7 @@ namespace Pawn.Runtime
             var statsBehaviour = new PawnStatsBehaviour(pawnDefinition.PawnStatsDefinition);
             var moveRequests = new MoveRequestQueue();
             var mover = new PawnMover(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnStatsDefinition.AccelerationCurve, moveRequests);
-            var behaviour = new PawnBehaviour(container.transform, moveRequests.Receiver, pawnDefinition.PawnStatsDefinition);
+            var behaviour = new PawnBehaviour(container.transform, moveRequests.Collector, pawnDefinition.PawnStatsDefinition);
             var pawn = new Pawn(controller, statsBehaviour, behaviour, mover);
 
             // 이 어뎁터 구조는 고민 필요
