@@ -7,14 +7,14 @@ namespace Pawn.Runtime
     internal class PawnMover : IPawnMover
     {
         private readonly PawnMotor bodyMover;
-        private readonly IMoveRequestQueue moveRequests;
+        private readonly IMoveRequestQueue requestQueue;
         private readonly AnimationCurve accelerationCurve;
         private float accelElapsedTime;
 
-        internal PawnMover(PawnMotor body, IMoveRequestQueue requests, AnimationCurve accelCurve)
+        internal PawnMover(PawnMotor body, IMoveRequestQueue queue, AnimationCurve accelCurve)
         {
             bodyMover = body;
-            moveRequests = requests;
+            requestQueue = queue;
             accelerationCurve = accelCurve;
         }
 
@@ -28,7 +28,7 @@ namespace Pawn.Runtime
             var teleportPosition = Vector2.zero;
 
             // 이번 프레임에 들어온 이동 요청 순회하면서 일괄 처리
-            while (moveRequests.TryDequeue(out var request))
+            while (requestQueue.TryDequeue(out var request))
             {
                 switch (request.MoveType)
                 {
@@ -73,7 +73,7 @@ namespace Pawn.Runtime
 
         public void Dispose()
         {
-            moveRequests.Clear();
+            requestQueue.Clear();
         }
     }
 }
