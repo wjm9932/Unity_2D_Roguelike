@@ -36,6 +36,16 @@ Kinematic 단계는 `KinematicWorld.Tick()`을 호출하고, 월드가 아직 �
 
 현재 게임 로직인 `PawnMover`는 Teleport 요청을 처리하면 그 호출에서 Move 요청을 추가하지 않는다. 이것은 게임 로직의 요청 정책이며, 바디 API의 공통 규칙과는 구분한다.
 
+## 바디의 접근 권한
+
+`KinematicBody`는 인터페이스를 구현하지 않는 구체 클래스이며, 조회 프로퍼티·`SetGhost()`·`Move()`·`Teleport()`를 public으로 제공한다. 사용하는 게임의 역할별 접근 방식을 바디의 상속 관계나 가시성에 넣지 않는다.
+
+public 생성자로 실제 `KinematicBody`를 생성한다. 호출자는 바디를 직접 움직이거나 자신의 게임 로직에 맞는 별도 클래스로 감싸서 사용할 수 있다. 특정 프로젝트의 접근 제한을 위해 바디에 이동·상태 인터페이스를 추가하거나 생성자·이동 API를 감추지 않는다.
+
+현재 게임의 접근 제한은 Pawn 쪽의 두 클래스가 담당한다. [PawnBody](../Pawn/Runtime/PawnBody.cs)는 조회 프로퍼티·`SetGhost()`·자기 형상의 `ShapeCast()`와 `ShapeCastAll()`만 제공하고, [PawnMotor](../Pawn/Runtime/PawnMotor.cs)는 `Move()`·`Teleport()`만 제공한다. 둘 다 실제 바디를 private으로 보관하며 서로 상속하지 않는다. `PawnCreator`는 `PawnMover`에 `PawnMotor`를, `PawnBehaviour`와 IdleSprint State에는 `IMoveRequestCollector`와 `PawnBody`를 전달한다. 전달받은 래퍼를 구체 바디나 다른 래퍼로 캐스팅할 수 없다. `Pawn`은 실제 바디를 보관해 월드 등록·해제를 담당한다.
+
+`KinematicWorld.Register()`·`Unregister()`와 Cast API의 바디 인자는 구체 `KinematicBody`를 받고, `ShapeCastHit.Body`도 실제 대상 바디를 반환한다. 월드 경계에서 인터페이스를 구체 타입으로 캐스팅할 필요가 없다. `PawnBody`의 자기 형상 Cast는 내부의 실제 바디로 호출하므로, 자기 자신 제외도 기존 바디 참조 비교로 처리한다. Cast 결과는 게임 쪽 접근 제한을 적용한 객체로 변환하지 않는다.
+
 ## 한 번의 Solve
 
 | 순서 | 처리 | 의도 |
@@ -77,7 +87,7 @@ Cast는 현재 계산 위치를 사용하고, 보관 중인 Move나 Teleport 요
 | 등록 해제 | 해당 자료구조에서 바디 제거 |
 | 월드 해제 | 트리와 목록 정리, 솔버 해제, 내부 참조와 초기화 상태 초기화 |
 
-`KinematicBodyAdapter`는 씬에 배치되는 게임오브젝트에서 사용하는 컴포넌트로써 컴포넌트의 활성화·비활성화 시점에 등록·해제를 수행한다. 게임 로직에서 바디를 직접 생성하는 경우에도 등록·해제는 그 바디를 사용하는 쪽에서 수행해야 한다.
+`KinematicBodyAdapter`는 씬에 배치되는 게임오브젝트에서 사용하는 컴포넌트로써 컴포넌트의 활성화·비활성화 시점에 등록·해제를 수행한다. 게임 로직에서 `new KinematicBody(...)`로 생성하는 경우에도 등록·해제는 그 바디를 사용하는 쪽에서 수행해야 한다. 생성자는 월드 등록을 수행하지 않는다.
 
 월드는 등록과 Cast 전에 초기화되어 있어야 한다. 현재 재초기화는 기존 월드를 해제한 뒤 가능하지만, 초기화 전 해제나 중복 해제를 안전하게 무시하는 처리는 없다. 정적 바디는 등록 후 위치와 Bounds가 변하지 않는 전제로 사용한다.
 

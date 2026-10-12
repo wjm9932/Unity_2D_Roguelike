@@ -3,6 +3,12 @@ using UnityEngine;
 
 namespace Kinematic.Runtime
 {
+    /// <summary>
+    /// KinematicBody는 특정 프로젝트에 종속되지 않는 독립적인 바디 기능을 제공한다.
+    /// Move, Teleport 등 공개 API는 사용하는 프로젝트와 관계없이 일관된 동작 규칙을 유지한다.
+    /// 프로젝트별로 허용할 기능과 접근 범위를 제한하는 것은 인게임 로직의 책임이다.
+    /// 이러한 제한은 KinematicBody를 수정하지 않고, 필요하다면 인게임 로직의 별도 래퍼로 구현한다.
+    /// </summary>
     public sealed class KinematicBody
     {
         private readonly Transform target;
@@ -60,13 +66,6 @@ namespace Kinematic.Runtime
             IsStatic = isStatic;
         }
 
-        public void Move(Vector2 moveDelta)
-        {
-            Debug.Assert(IsStatic == false, $"Request Move to static body: {target.name}");
-
-            pendingMoveDelta += moveDelta;
-        }
-
         public void SetGhost(bool isGhost)
         {
             if (IsGhost == isGhost) return;
@@ -83,6 +82,13 @@ namespace Kinematic.Runtime
             // 텔레포트 이동도 solve 시점과 통일하기 위해서 즉시 적용하지 않는다.
             // Teleport와 Cast의 호출 순서가 조회 결과에 영향을 주지 않도록 Solve 시점에 일반 이동과 함께 일괄 적용한다.
             pendingTeleportPosition = position;
+        }
+
+        public void Move(Vector2 moveDelta)
+        {
+            Debug.Assert(IsStatic == false, $"Request Move to static body: {target.name}");
+
+            pendingMoveDelta += moveDelta;
         }
 
         internal void ApplyTeleport()
