@@ -13,6 +13,7 @@ namespace Pawn.Runtime.State
     {
         private float sprintSpeed;
         private IMoveRequestCollector collector;
+        private PawnBody pawnBody;
         private IPawnControls controls;
 
         private IDisposable dashSubscription;
@@ -47,14 +48,16 @@ namespace Pawn.Runtime.State
         public override void OnDispose()
         {
             collector = null;
+            pawnBody = null;
         }
 
-        public static PawnIdleSprintState Create(float sprintSpeed, IMoveRequestCollector receiver)
+        public static PawnIdleSprintState Create(float sprintSpeed, IMoveRequestCollector receiver, PawnBody body)
         {
             var state = GetOrCreate();
 
             state.sprintSpeed = sprintSpeed;
             state.collector = receiver;
+            state.pawnBody = body;
             state.controls = InputManager.Instance.PawnControls;
 
             return state;

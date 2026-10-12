@@ -1,6 +1,4 @@
-﻿using Kinematic.Data;
-using Kinematic.Runtime;
-using Pawn.Data;
+﻿using Pawn.Data;
 using Pawn.Interface;
 using UnityEngine;
 
@@ -8,18 +6,16 @@ namespace Pawn.Runtime
 {
     internal class PawnMover : IPawnMover
     {
+        private readonly PawnMotor bodyMover;
         private readonly IMoveRequestQueue moveRequests;
-        private readonly KinematicBody kinematicBody;
         private readonly AnimationCurve accelerationCurve;
         private float accelElapsedTime;
 
-        internal PawnMover(Transform owner, ColliderInfo colldierInfo, AnimationCurve accelCurve, IMoveRequestQueue requests)
+        internal PawnMover(PawnMotor body, IMoveRequestQueue requests, AnimationCurve accelCurve)
         {
+            bodyMover = body;
             moveRequests = requests;
-            kinematicBody = new KinematicBody(owner, colldierInfo, false);
             accelerationCurve = accelCurve;
-
-            KinematicWorld.Register(kinematicBody);
         }
 
         void IPawnMover.OnMove(float dt)
@@ -57,7 +53,7 @@ namespace Pawn.Runtime
 
             if (hasTeleport == true)
             {
-                kinematicBody.Teleport(teleportPosition);
+                bodyMover.Teleport(teleportPosition);
                 return;
             }
 
@@ -72,13 +68,12 @@ namespace Pawn.Runtime
             speedMultiplier = Mathf.Clamp01(speedMultiplier);
             var moveDelta = activeVelocity * (speedMultiplier * dt);
 
-            kinematicBody.Move(moveDelta);
+            bodyMover.Move(moveDelta);
         }
 
         public void Dispose()
         {
             moveRequests.Clear();
-            KinematicWorld.Unregister(kinematicBody);
         }
     }
 }
