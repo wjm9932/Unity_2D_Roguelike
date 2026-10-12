@@ -167,7 +167,7 @@ namespace Kinematic.Runtime
         {
             hit = default;
 
-            if (candidate == ignoredBody || (layerMask & (1 << candidate.Layer)) == 0)
+            if (ReferenceEquals(candidate, ignoredBody) || (layerMask & (1 << candidate.Layer)) == 0)
             {
                 return false;
             }
