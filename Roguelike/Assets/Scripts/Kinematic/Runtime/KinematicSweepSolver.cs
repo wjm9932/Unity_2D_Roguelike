@@ -13,6 +13,7 @@ namespace Kinematic.Runtime
         private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
         // 동적 바디 조회용 리스트
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
+        private readonly IReadOnlyList<KinematicCorrectionState> initialCorrectionStates;
         // 쿼리 결과용 버퍼
         private readonly List<KinematicBody> queryResult = new();
         // 모든 dynamicBodies와 같은 순서로 상태를 생성하여 동일한 인덱스로 연결한다.
@@ -27,10 +28,10 @@ namespace Kinematic.Runtime
         {
             internal Vector2 RemainingMoveDelta { get; set; }
             internal int SlideIterationCount { get; set; }
-            internal MovePriority PushPriority { get; set; }
+            internal int PushPriority { get; set; }
             internal bool HasMoveDelta => RemainingMoveDelta.sqrMagnitude > MinMoveDistance * MinMoveDistance;
 
-            internal SweepBodyState(Vector2 moveDelta, MovePriority pushPriority)
+            internal SweepBodyState(Vector2 moveDelta, int pushPriority)
             {
                 RemainingMoveDelta = moveDelta;
                 SlideIterationCount = 0;
@@ -52,17 +53,20 @@ namespace Kinematic.Runtime
             }
         }
 
-        internal KinematicSweepSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
+        internal KinematicSweepSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, IReadOnlyList<KinematicCorrectionState> correctionStates)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
+            initialCorrectionStates = correctionStates;
         }
 
         public void Solve()
         {
-            foreach (var body in dynamicBodies)
+            for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
-                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), body.Priority));
+                var body = dynamicBodies[bodyIndex];
+                var pushPriority = initialCorrectionStates[bodyIndex].PushPriority;
+                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), pushPriority));
             }
 
             Sweep();
@@ -172,27 +176,29 @@ namespace Kinematic.Runtime
 
                 foreach (var contact in sweepContacts)
                 {
+                    // 벽과 부딪혔을 경우
                     if (contact.BodyBIndex < 0)
                     {
                         SlideSweepBody(contact.BodyAIndex, contact.Normal);
-                        continue;
-                    }
-
-                    var priorityA = sweepBodyStates[contact.BodyAIndex].PushPriority;
-                    var priorityB = sweepBodyStates[contact.BodyBIndex].PushPriority;
-                    if (priorityA == priorityB)
-                    {
-                        SlideSweepBody(contact.BodyAIndex, contact.Normal);
-                        // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
-                        SlideSweepBody(contact.BodyBIndex, -contact.Normal);
-                    }
-                    else if ((int)priorityA < (int)priorityB)
-                    {
-                        SlideLowerPriorityBody(contact.BodyAIndex, contact.BodyBIndex, contact.Normal);
                     }
                     else
                     {
-                        SlideLowerPriorityBody(contact.BodyBIndex, contact.BodyAIndex, -contact.Normal);
+                        var priorityA = sweepBodyStates[contact.BodyAIndex].PushPriority;
+                        var priorityB = sweepBodyStates[contact.BodyBIndex].PushPriority;
+                        if (priorityA == priorityB)
+                        {
+                            SlideSweepBody(contact.BodyAIndex, contact.Normal);
+                            // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
+                            SlideSweepBody(contact.BodyBIndex, -contact.Normal);
+                        }
+                        else if (priorityA < priorityB)
+                        {
+                            SlideLowerPriorityBody(contact.BodyAIndex, contact.BodyBIndex, contact.Normal);
+                        }
+                        else
+                        {
+                            SlideLowerPriorityBody(contact.BodyBIndex, contact.BodyAIndex, -contact.Normal);
+                        }
                     }
                 }
             }
@@ -245,28 +251,11 @@ namespace Kinematic.Runtime
         {
             var lowerState = sweepBodyStates[lowerPriorityIndex];
             var higherState = sweepBodyStates[higherPriorityIndex];
-            if (lowerState.SlideIterationCount >= MaxSlideIterationCount)
+            // 이미 슬라이드 한도를 썼어도 높은 바디의 접근 이동에 밀리는 것은 허용한다.
+            if (lowerState.SlideIterationCount >= MaxSlideIterationCount
+                && Vector2.Dot(higherState.RemainingMoveDelta, normal) <= 0f)
             {
-                // 벽 등에 막혀 낮은 바디를 더 밀 수 없다면 접촉을 유지하고 높은 바디도 제한한다.
-                // 낮은 바디 자신의 안쪽 이동부터 제거하여 낮은 바디가 높은 바디를 밀지는 않게 한다.
                 SlideSweepBody(lowerPriorityIndex, normal);
-                lowerState = sweepBodyStates[lowerPriorityIndex];
-                var blockedIntoSurface = Vector2.Dot(lowerState.RemainingMoveDelta - higherState.RemainingMoveDelta, normal);
-                if (blockedIntoSurface < 0f)
-                {
-                    if (higherState.SlideIterationCount >= MaxSlideIterationCount)
-                    {
-                        higherState.RemainingMoveDelta = Vector2.zero;
-                    }
-                    else
-                    {
-                        higherState.RemainingMoveDelta += normal * blockedIntoSurface;
-                        higherState.SlideIterationCount++;
-                    }
-
-                    sweepBodyStates[higherPriorityIndex] = higherState;
-                }
-
                 return;
             }
 
@@ -280,9 +269,15 @@ namespace Kinematic.Runtime
                 // 자기 이동을 취소한 경우가 아니라 높은 바디의 접근 이동에 밀렸을 때만 우선순위를 전달한다.
                 if (Vector2.Dot(higherState.RemainingMoveDelta, normal) > 0f)
                 {
+                    // 높은 바디에 밀린 이동은 슬라이드 횟수를 소비하지 않는다.
                     lowerState.PushPriority = higherState.PushPriority;
                 }
-                lowerState.SlideIterationCount++;
+                else
+                {
+                    // 자기 이동을 상대 표면에 맞춰 제한한 경우에만 소비한다.
+                    lowerState.SlideIterationCount++;
+                }
+
                 sweepBodyStates[lowerPriorityIndex] = lowerState;
             }
         }

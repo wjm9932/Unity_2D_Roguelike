@@ -41,6 +41,18 @@ namespace Kinematic.Runtime
 
         internal static bool TryCollide(Vector2 centerA, in ColliderInfo shapeA, Vector2 centerB, in ColliderInfo shapeB, out Contact contact)
         {
+            var hasCollision = TryGetContact(centerA, shapeA, centerB, shapeB, out contact);
+
+            // 부동소수점 정밀도 한계로, 분담한 미세 MTV를 좌표에 더해도 반올림되어 실제 위치가 바뀌지 않을 수 있다.
+            // 이로 인해 충돌은 계속 검출되지만 겹침은 해소되지 않는 반복을 막기 위해 허용 오차 이하의 침투는 무시한다.
+            return hasCollision && contact.PenetrationDepth > Epsilon;
+        }
+
+        // Sweep의 시작 접촉에는 위치 보정용 허용 오차를 적용하지 않는다. 작은 겹침도 접촉으로 유지해야 안쪽으로 파고드는 이동을 막을 수 있다.
+        // 물론 한 프레임 접촉 감지를 못해 파고들더라로 다음 프레임에 감지가 되어서 안쪽으로 계속 파고 들 수는 없으나 한 프레임 파고 들고
+        // 다음 프레임에 InitialSolver가 감지해서 밖으로 Solving하는 과정에서 떨림이 유발 발생하기 때문에 오차를 여기서는 허용하지 않는다.
+        internal static bool TryGetContact(Vector2 centerA, in ColliderInfo shapeA, Vector2 centerB, in ColliderInfo shapeB, out Contact contact)
+        {
             contact = default;
 
             var hasCollision = (shapeA.Shape, shapeB.Shape) switch
@@ -60,14 +72,7 @@ namespace Kinematic.Runtime
                 _ => false
             };
 
-            // 부동소수점 정밀도 한계로, 분담한 미세 MTV를 좌표에 더해도 반올림되어 실제 위치가 바뀌지 않을 수 있다.
-            // 이로 인해 충돌은 계속 검출되지만 겹침은 해소되지 않는 반복을 막기 위해 허용 오차 이하의 침투는 무시한다.
-            if (hasCollision == false || contact.PenetrationDepth <= Epsilon)
-            {
-                return false;
-            }
-
-            return true;
+            return hasCollision;
         }
 
         private static bool TryBoxBox(Vector2 centerA, Vector2 halfExtentsA, Vector2 centerB, Vector2 halfExtentsB, out Contact contact)
@@ -145,15 +150,18 @@ namespace Kinematic.Runtime
         {
             contact = default;
 
-            var boxMin = boxCenter - halfExtents;
-            var boxMax = boxCenter + halfExtents;
+            // 경로 검사와 같은 박스 중심 상대 좌표를 사용한다.
+            // 월드 좌표에 면 위치를 더했다가 빼면 반올림 때문에 시작 겹침 판정이 달라질 수 있다.
+            var circleOffset = circleCenter - boxCenter;
+            var boxMin = -halfExtents;
+            var boxMax = halfExtents;
 
-            if (IsInsideOnAABB(circleCenter, boxMin, boxMax))
+            if (IsInsideOnAABB(circleOffset, boxMin, boxMax))
             {
-                var distanceToLeft = circleCenter.x - boxMin.x;
-                var distanceToRight = boxMax.x - circleCenter.x;
-                var distanceToBottom = circleCenter.y - boxMin.y;
-                var distanceToTop = boxMax.y - circleCenter.y;
+                var distanceToLeft = circleOffset.x - boxMin.x;
+                var distanceToRight = boxMax.x - circleOffset.x;
+                var distanceToBottom = circleOffset.y - boxMin.y;
+                var distanceToTop = boxMax.y - circleOffset.y;
 
                 var nearestFaceDistance = distanceToLeft;
                 var separationNormal = Vector2.left;
@@ -181,9 +189,9 @@ namespace Kinematic.Runtime
                 return true;
             }
 
-            var closestPoint = new Vector2(Mathf.Clamp(circleCenter.x, boxMin.x, boxMax.x), Mathf.Clamp(circleCenter.y, boxMin.y, boxMax.y));
+            var closestPoint = new Vector2(Mathf.Clamp(circleOffset.x, boxMin.x, boxMax.x), Mathf.Clamp(circleOffset.y, boxMin.y, boxMax.y));
 
-            var delta = circleCenter - closestPoint;
+            var delta = circleOffset - closestPoint;
             var distanceSquared = delta.sqrMagnitude;
 
             if (distanceSquared >= radius * radius)

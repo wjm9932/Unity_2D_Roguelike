@@ -12,13 +12,13 @@ namespace Kinematic.Runtime
         private readonly IKinematicMovementSolver movementSolver;
         private readonly List<KinematicCorrectionState> correctionStates = new();
 
-        private const int MaxSolverIterationCount = 1;
+        private const int MaxSolverIterationCount = 2;
 
         internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, bool sweep)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
-            movementSolver = sweep ? new KinematicSweepSolver(statics, dynamics) : new KinematicDiscreteSolver(statics, dynamics);
+            movementSolver = sweep ? new KinematicSweepSolver(statics, dynamics, correctionStates) : new KinematicDiscreteSolver(statics, dynamics, correctionStates);
         }
 
         internal void Solve()
@@ -136,6 +136,7 @@ namespace Kinematic.Runtime
                     }
 
                     dynamicBody.ApplyCorrection(contact.SeparationMtv);
+                    correctionStates[bodyIndex].InheritPushPriority(int.MaxValue, contact.SeparationMtv);
                     hasCollision = true;
                 }
             }
@@ -173,10 +174,12 @@ namespace Kinematic.Runtime
                     var correctionA = Vector2.zero;
                     var correctionB = Vector2.zero;
 
-                    if (bodyA.Priority != bodyB.Priority)
+                    var correctionStateA = correctionStates[bodyAIndex];
+                    var correctionStateB = correctionStates[bodyBIndex];
+                    if (correctionStateA.PushPriority != correctionStateB.PushPriority)
                     {
                         // 우선순위가 낮은 바디를 먼저 보정한다.
-                        KinematicBodyExtension.GetPriorityCorrections(contact, correctionStates[bodyAIndex], correctionStates[bodyBIndex], out correctionA, out correctionB);
+                        KinematicBodyExtension.GetPriorityCorrections(contact, correctionStateA, correctionStateB, out correctionA, out correctionB);
                     }
                     // 같은 우선순위에서 한쪽만 고스트를 종료했다면 기존처럼 종료한 바디만 보정한다.
                     else if (recoverBodyA != recoverBodyB)
@@ -193,6 +196,9 @@ namespace Kinematic.Runtime
 
                     bodyA.ApplyCorrection(correctionA);
                     bodyB.ApplyCorrection(correctionB);
+
+                    correctionStateA.InheritPushPriority(correctionStateB.PushPriority, correctionA);
+                    correctionStateB.InheritPushPriority(correctionStateA.PushPriority, correctionB);
                 }
             }
 

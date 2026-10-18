@@ -14,15 +14,16 @@ namespace Kinematic.Runtime
         private readonly List<KinematicBody> queryResult = new();
         // 모든 dynamicBodies와 같은 순서로 이동량을 저장하여 동일한 인덱스로 연결한다.
         private readonly List<Vector2> discreteMoveDeltas = new();
-        private readonly List<KinematicCorrectionState> correctionStates = new();
+        private readonly IReadOnlyList<KinematicCorrectionState> correctionStates;
 
         private const int MaxSolverIterationCount = 16;
         private const float MinMoveDistance = 0.000001f;
 
-        internal KinematicDiscreteSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
+        internal KinematicDiscreteSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, IReadOnlyList<KinematicCorrectionState> initialCorrectionStates)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
+            correctionStates = initialCorrectionStates;
         }
 
         public void Solve()
@@ -48,8 +49,6 @@ namespace Kinematic.Runtime
 
         private void ResolveDiscreteCollisions()
         {
-            KinematicCorrectionState.Reset(correctionStates, dynamicBodies);
-
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
                 var hasDynamicStaticCollision = SolveDynamicStaticCollisions();
@@ -64,20 +63,35 @@ namespace Kinematic.Runtime
             discreteMoveDeltas.Clear();
         }
 
-        // sweep solver 처럼 dynamicBody의 이동량이 없으면 건너뛰게 해야할듯
-        // 초기 겹침 해결을 여기서도 하려고한다
+        private bool HasMoveDelta(int bodyIndex)
+        {
+            // 보정으로 밀린 바디도 이후 검사에 참여하고, 보정으로 이동이 상쇄되면 제외한다.
+            return discreteMoveDeltas[bodyIndex].sqrMagnitude > MinMoveDistance * MinMoveDistance;
+        }
+
+        // 이동량이 있는 동적 바디만 정적 바디와 검사한다.
         private bool SolveDynamicStaticCollisions()
         {
             var hasCollision = false;
 
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
+                if (HasMoveDelta(bodyIndex) == false)
+                {
+                    continue;
+                }
+
                 var dynamicBody = dynamicBodies[bodyIndex];
 
                 staticBodies.Query(dynamicBody.Bounds, queryResult);
 
                 foreach (var staticBody in queryResult)
                 {
+                    if (HasMoveDelta(bodyIndex) == false)
+                    {
+                        break;
+                    }
+
                     if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.TryCollide(staticBody, out var contact) == false)
                     {
                         continue;
@@ -92,8 +106,7 @@ namespace Kinematic.Runtime
             return hasCollision;
         }
 
-        // sweep solver 처럼 dynamicBody 둘 다 이동량이 없으면 건너뛰게 해야할듯
-        // 초기 겹침 해결을 여기서도 하려고한다
+        // 두 바디 모두 이동량이 없으면 동적 쌍의 검사를 건너뛴다.
         private bool SolveDynamicDynamicCollisions()
         {
             var hasCollision = false;
@@ -104,6 +117,11 @@ namespace Kinematic.Runtime
 
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
+                    if (HasMoveDelta(bodyAIndex) == false && HasMoveDelta(bodyBIndex) == false)
+                    {
+                        continue;
+                    }
+
                     var bodyB = dynamicBodies[bodyBIndex];
 
                     if (bodyA.CanCollideWith(bodyB) == false)
@@ -135,45 +153,46 @@ namespace Kinematic.Runtime
                         correctionStateA.InheritPushPriority(correctionStateB, discreteMoveDeltas[bodyBIndex], priorityCorrectionA);
                         correctionStateB.InheritPushPriority(correctionStateA, discreteMoveDeltas[bodyAIndex], priorityCorrectionB);
 
-                        continue;
                     }
-
-                    // 서로 지나쳐 접촉 법선이 뒤집히면 접근한 바디 대신 상대 바디가 보정될 수 있다.
-                    var moveDeltaA = discreteMoveDeltas[bodyAIndex];
-                    var moveDeltaB = discreteMoveDeltas[bodyBIndex];
-                    var normal = contact.SeparationNormal;
-
-                    // 바디 A의 법선 안쪽 이동량
-                    var correctionWeightA = Mathf.Max(0f, Vector2.Dot(moveDeltaA, -normal));
-                    // 바디 B의 법선 안쪽 이동량
-                    var correctionWeightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
-                    // 두 바디의 법선 안쪽 이동량 합. 충돌 전 간격을 좁힌 이동도 포함되므로 겹침 크기와 다를 수 있다.
-                    var totalWeight = correctionWeightA + correctionWeightB;
-                    // 이동 후 법선에 안쪽 이동 성분이 없는 경우
-                    if (totalWeight <= MinMoveDistance)
+                    else
                     {
-                        // 이동량 크기로 보정을 분담하여 정지한 바디는 밀지 않는다.
-                        correctionWeightA = moveDeltaA.magnitude;
-                        correctionWeightB = moveDeltaB.magnitude;
-                        totalWeight = correctionWeightA + correctionWeightB;
+                        // 서로 지나쳐 접촉 법선이 뒤집히면 접근한 바디 대신 상대 바디가 보정될 수 있다.
+                        var moveDeltaA = discreteMoveDeltas[bodyAIndex];
+                        var moveDeltaB = discreteMoveDeltas[bodyBIndex];
+                        var normal = contact.SeparationNormal;
+
+                        // 바디 A의 법선 안쪽 이동량
+                        var correctionWeightA = Mathf.Max(0f, Vector2.Dot(moveDeltaA, -normal));
+                        // 바디 B의 법선 안쪽 이동량
+                        var correctionWeightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
+                        // 두 바디의 법선 안쪽 이동량 합. 충돌 전 간격을 좁힌 이동도 포함되므로 겹침 크기와 다를 수 있다.
+                        var totalWeight = correctionWeightA + correctionWeightB;
+                        // 이동 후 법선에 안쪽 이동 성분이 없는 경우
+                        if (totalWeight <= MinMoveDistance)
+                        {
+                            // 이동량 크기로 보정을 분담하여 정지한 바디는 밀지 않는다.
+                            correctionWeightA = moveDeltaA.magnitude;
+                            correctionWeightB = moveDeltaB.magnitude;
+                            totalWeight = correctionWeightA + correctionWeightB;
+                        }
+
+                        if (totalWeight <= MinMoveDistance)
+                        {
+                            continue;
+                        }
+
+                        // 각 바디의 가중치 비율에 따라 MTV를 분담한다.
+                        // A는 법선 방향으로, B는 반대 방향으로 보정한다.
+                        var correctionA = contact.SeparationMtv * (correctionWeightA / totalWeight);
+                        var correctionB = -contact.SeparationMtv * (correctionWeightB / totalWeight);
+
+                        // 보정 적용
+                        bodyA.ApplyCorrection(correctionA);
+                        bodyB.ApplyCorrection(correctionB);
+
+                        discreteMoveDeltas[bodyAIndex] += correctionA;
+                        discreteMoveDeltas[bodyBIndex] += correctionB;
                     }
-
-                    if (totalWeight <= MinMoveDistance)
-                    {
-                        continue;
-                    }
-
-                    // 각 바디의 가중치 비율에 따라 MTV를 분담한다.
-                    // A는 법선 방향으로, B는 반대 방향으로 보정한다.
-                    var correctionA = contact.SeparationMtv * (correctionWeightA / totalWeight);
-                    var correctionB = -contact.SeparationMtv * (correctionWeightB / totalWeight);
-
-                    // 보정 적용
-                    bodyA.ApplyCorrection(correctionA);
-                    bodyB.ApplyCorrection(correctionB);
-
-                    discreteMoveDeltas[bodyAIndex] += correctionA;
-                    discreteMoveDeltas[bodyBIndex] += correctionB;
                 }
             }
 
@@ -182,7 +201,6 @@ namespace Kinematic.Runtime
 
         public void Dispose()
         {
-            correctionStates.Clear();
         }
     }
 }
