@@ -15,7 +15,7 @@ namespace Kinematic.Runtime
         {
             if (body != null) return;
 
-            body = new KinematicBody(transform, colliderInfo, isStatic);
+            body = isStatic ? new KinematicBody(transform, colliderInfo) : new KinematicBody(transform, colliderInfo, MovePriority.Medium);
         }
 
         // 이벤트로 Register해야할듯

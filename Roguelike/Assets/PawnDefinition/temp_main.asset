@@ -19,10 +19,8 @@ MonoBehaviour:
       shape: 0
       offset: {x: 0, y: 0}
       radius: 0.5
-      halfExtents: {x: 0, y: 0}
-    collidableLayer:
-      serializedVersion: 2
-      m_Bits: 72
+      halfExtents: {x: 0.5, y: 0.5}
+    movePriority: 1
   pawnStatsDefinition:
     speed: 4
     accelerationCurve:

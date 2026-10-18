@@ -6,7 +6,6 @@ namespace Pawn.Data
 {
     public interface IPawnAssetDefinition
     {
-       
     }
 
     [Serializable]
@@ -14,8 +13,10 @@ namespace Pawn.Data
     {
         [SerializeField] private GameObject avatar;
         [SerializeField] private ColliderInfo colliderInfo;
+        [SerializeField] private MovePriority movePriority = MovePriority.Medium;
 
         public GameObject Avatar => avatar;
         public ColliderInfo ColiderInfo => colliderInfo;
+        public MovePriority MovePriority => movePriority;
     }
 }

@@ -1,6 +1,6 @@
 using Kinematic.Interface;
-using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Kinematic.Runtime
 {
@@ -10,8 +10,9 @@ namespace Kinematic.Runtime
         private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         private readonly IKinematicMovementSolver movementSolver;
+        private readonly List<KinematicCorrectionState> correctionStates = new();
 
-        private const int MaxSolverIterationCount = 16;
+        private const int MaxSolverIterationCount = 1;
 
         internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, bool sweep)
         {
@@ -45,6 +46,8 @@ namespace Kinematic.Runtime
 
         private void SolveInitialCollisions()
         {
+            KinematicCorrectionState.Reset(correctionStates, dynamicBodies);
+
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
                 var hasDynamicStaticCollision = SolveInitialDynamicStaticCollisions();
@@ -162,29 +165,34 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
+                    hasCollision = true;
+
                     var recoverBodyA = bodyA.NeedsGhostRecovery && bodyA.CanGhostThrough(bodyB);
                     var recoverBodyB = bodyB.NeedsGhostRecovery && bodyB.CanGhostThrough(bodyA);
 
-                    // 한쪽만 고스트를 종료했다면 그 바디가 MTV를 전부 받아 상대를 밀지 않는다.
-                    if (recoverBodyA != recoverBodyB)
+                    var correctionA = Vector2.zero;
+                    var correctionB = Vector2.zero;
+
+                    if (bodyA.Priority != bodyB.Priority)
                     {
-                        if (recoverBodyA)
-                        {
-                            bodyA.ApplyCorrection(contact.SeparationMtv);
-                        }
-                        else
-                        {
-                            bodyB.ApplyCorrection(-contact.SeparationMtv);
-                        }
+                        // 우선순위가 낮은 바디를 먼저 보정한다.
+                        KinematicBodyExtension.GetPriorityCorrections(contact, correctionStates[bodyAIndex], correctionStates[bodyBIndex], out correctionA, out correctionB);
+                    }
+                    // 같은 우선순위에서 한쪽만 고스트를 종료했다면 기존처럼 종료한 바디만 보정한다.
+                    else if (recoverBodyA != recoverBodyB)
+                    {
+                        correctionA = recoverBodyA ? contact.SeparationMtv : Vector2.zero;
+                        correctionB = recoverBodyB ? -contact.SeparationMtv : Vector2.zero;
                     }
                     else
                     {
                         // 일반 겹침은 두 바디가 MTV를 절반씩 나눠 받는다.
-                        bodyA.ApplyCorrection(contact.SeparationMtv * 0.5f);
-                        bodyB.ApplyCorrection(-contact.SeparationMtv * 0.5f);
+                        correctionA = contact.SeparationMtv * 0.5f;
+                        correctionB = -contact.SeparationMtv * 0.5f;
                     }
 
-                    hasCollision = true;
+                    bodyA.ApplyCorrection(correctionA);
+                    bodyB.ApplyCorrection(correctionB);
                 }
             }
 
@@ -199,6 +207,10 @@ namespace Kinematic.Runtime
             }
         }
 
-        internal void Dispose() => movementSolver.Dispose();
+        internal void Dispose()
+        {
+            correctionStates.Clear();
+            movementSolver.Dispose();
+        }
     }
 }

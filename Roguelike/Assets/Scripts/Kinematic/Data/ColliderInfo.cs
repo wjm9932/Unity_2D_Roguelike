@@ -5,6 +5,13 @@ using UnityEngine;
 
 namespace Kinematic.Data
 {
+    public enum MovePriority
+    {
+        Low,
+        Medium,
+        High
+    }
+
     public enum Shape
     {
         Circle,

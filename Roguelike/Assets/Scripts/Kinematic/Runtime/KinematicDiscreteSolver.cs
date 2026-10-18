@@ -1,6 +1,4 @@
-using Kinematic.Data;
 using Kinematic.Interface;
-using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,6 +14,7 @@ namespace Kinematic.Runtime
         private readonly List<KinematicBody> queryResult = new();
         // 모든 dynamicBodies와 같은 순서로 이동량을 저장하여 동일한 인덱스로 연결한다.
         private readonly List<Vector2> discreteMoveDeltas = new();
+        private readonly List<KinematicCorrectionState> correctionStates = new();
 
         private const int MaxSolverIterationCount = 16;
         private const float MinMoveDistance = 0.000001f;
@@ -34,6 +33,7 @@ namespace Kinematic.Runtime
 
         private void SolveDiscreteMovements()
         {
+            // 여기 하나로 합칠 수 있지 않나? 굳이 반복문 두 번?
             foreach (var body in dynamicBodies)
             {
                 var moveDelta = body.ConsumeMoveDelta();
@@ -48,6 +48,8 @@ namespace Kinematic.Runtime
 
         private void ResolveDiscreteCollisions()
         {
+            KinematicCorrectionState.Reset(correctionStates, dynamicBodies);
+
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
                 var hasDynamicStaticCollision = SolveDynamicStaticCollisions();
@@ -62,6 +64,8 @@ namespace Kinematic.Runtime
             discreteMoveDeltas.Clear();
         }
 
+        // sweep solver 처럼 dynamicBody의 이동량이 없으면 건너뛰게 해야할듯
+        // 초기 겹침 해결을 여기서도 하려고한다
         private bool SolveDynamicStaticCollisions()
         {
             var hasCollision = false;
@@ -88,6 +92,8 @@ namespace Kinematic.Runtime
             return hasCollision;
         }
 
+        // sweep solver 처럼 dynamicBody 둘 다 이동량이 없으면 건너뛰게 해야할듯
+        // 초기 겹침 해결을 여기서도 하려고한다
         private bool SolveDynamicDynamicCollisions()
         {
             var hasCollision = false;
@@ -108,6 +114,27 @@ namespace Kinematic.Runtime
                     // 충돌 검사
                     if (bodyA.TryCollide(bodyB, out var contact) == false)
                     {
+                        continue;
+                    }
+
+                    hasCollision = true;
+
+                    var correctionStateA = correctionStates[bodyAIndex];
+                    var correctionStateB = correctionStates[bodyBIndex];
+                    if (correctionStateA.PushPriority != correctionStateB.PushPriority)
+                    {
+                        // 낮은 우선순위 바디를 먼저 보정하고, 새로 발생한 겹침은 이후 Iteration에서 해결한다.
+                        KinematicBodyExtension.GetPriorityCorrections(contact, correctionStateA, correctionStateB, out var priorityCorrectionA, out var priorityCorrectionB);
+
+                        bodyA.ApplyCorrection(priorityCorrectionA);
+                        bodyB.ApplyCorrection(priorityCorrectionB);
+
+                        discreteMoveDeltas[bodyAIndex] += priorityCorrectionA;
+                        discreteMoveDeltas[bodyBIndex] += priorityCorrectionB;
+
+                        correctionStateA.InheritPushPriority(correctionStateB, discreteMoveDeltas[bodyBIndex], priorityCorrectionA);
+                        correctionStateB.InheritPushPriority(correctionStateA, discreteMoveDeltas[bodyAIndex], priorityCorrectionB);
+
                         continue;
                     }
 
@@ -147,15 +174,15 @@ namespace Kinematic.Runtime
 
                     discreteMoveDeltas[bodyAIndex] += correctionA;
                     discreteMoveDeltas[bodyBIndex] += correctionB;
-
-                    hasCollision = true;
                 }
             }
 
             return hasCollision;
         }
+
         public void Dispose()
         {
+            correctionStates.Clear();
         }
     }
 }

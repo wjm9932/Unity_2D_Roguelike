@@ -12,6 +12,11 @@ namespace Kinematic.Runtime
         [SerializeField] private ColliderInfo colliderInfo = ColliderInfo.CreateCircle(Vector2.zero, 0.5f);
         [SerializeField] private AnimationCurve dashCurve;
 
+        public float speed;
+
+        public bool useInput = true;
+        public MovePriority priority;
+
         private KinematicBody body;
         private IDisposable dashSubscription;
         private bool isDashing;
@@ -23,17 +28,62 @@ namespace Kinematic.Runtime
 
         private void OnEnable()
         {
-            body = new KinematicBody(transform, colliderInfo, isStatic: false);
+            body = new KinematicBody(transform, colliderInfo, priority);
             KinematicWorld.Register(body);
             dashSubscription = InputManager.Instance.PawnControls.Dash.Subscribe(value =>
             {
                 if (value)
-                    Dash();
+                {
+                    //Dash();
+                    Teleport();
+                }
             });
+        }
+
+        private void Start()
+        {
+            //// 등록 순서 비교 실험: 모든 OnEnable 이후 이 세 바디만 A-B-C 순서로 다시 등록한다.
+            //if (name != "Circle") return;
+
+            //var tests = FindObjectsByType<KinematicDynamicMoveTest>(FindObjectsSortMode.None);
+            //var orderedTests = new KinematicDynamicMoveTest[3];
+            //foreach (var test in tests)
+            //{
+            //    if (test.gameObject.scene != gameObject.scene || test.isActiveAndEnabled == false || test.body == null)
+            //    {
+            //        continue;
+            //    }
+
+            //    switch (test.name)
+            //    {
+            //        case "Circle": orderedTests[0] = test; break;
+            //        case "Circle (1)": orderedTests[1] = test; break;
+            //        case "Circle (2)": orderedTests[2] = test; break;
+            //    }
+            //}
+
+            //foreach (var test in orderedTests)
+            //{
+            //    if (test == null) return;
+            //}
+
+            //foreach (var test in orderedTests)
+            //{
+            //    KinematicWorld.Unregister(test.body);
+            //}
+
+            //foreach (var test in orderedTests)
+            //{
+            //    KinematicWorld.Register(test.body);
+            //    Debug.Log($"[KinematicOrderTest] Registered {test.name}: priority={test.priority}, center={test.transform.position}");
+            //}
         }
 
         private void Update()
         {
+            if (useInput == false) return;
+
+
             if (isDashing && dashElapsedTime < dashDuration)
             {
                 UpdateDash();
@@ -48,7 +98,7 @@ namespace Kinematic.Runtime
             if (moveInput.sqrMagnitude > Mathf.Epsilon)
                 lastMoveDirection = moveInput.normalized;
 
-            body.Move(moveInput * 4.5f * Time.deltaTime);
+            body.Move(moveInput * speed * Time.deltaTime);
         }
 
         private void Dash()
@@ -61,6 +111,13 @@ namespace Kinematic.Runtime
             dashDistance = 0f;
             isDashing = true;
             body.SetGhost(true);
+        }
+
+        private void Teleport()
+        {
+            if (useInput == false) return;
+
+            body.Teleport(new Vector2(0f, 0f));
         }
 
         private void UpdateDash()

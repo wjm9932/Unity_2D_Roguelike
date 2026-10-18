@@ -17,6 +17,8 @@ namespace Kinematic.Runtime
         private Vector2? pendingTeleportPosition;
 
 #if UNITY_EDITOR
+        internal string Name { get; }
+
         private Vector2 debugStartPosition;
         private Vector2 debugRequestedMoveDelta;
 
@@ -54,16 +56,34 @@ namespace Kinematic.Runtime
                 return AABB.Create(Center, extents);
             }
         }
+        internal MovePriority Priority { get; }
         internal bool IsStatic { get; }
         internal bool IsGhost { get; private set; }
         internal bool NeedsGhostRecovery { get; set; }
 
-        public KinematicBody(Transform transform, ColliderInfo shape, bool isStatic)
+        public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority)
         {
             target = transform;
             anchorPosition = transform.position;
             Shape = shape;
-            IsStatic = isStatic;
+            Priority = movePriority;
+            IsStatic = false;
+
+#if UNITY_EDITOR
+            Name = transform.name;
+#endif
+        }
+
+        public KinematicBody(Transform transform, ColliderInfo shape)
+        {
+            target = transform;
+            anchorPosition = transform.position;
+            Shape = shape;
+            IsStatic = true;
+
+#if UNITY_EDITOR
+            Name = transform.name;
+#endif
         }
 
         public void SetGhost(bool isGhost)

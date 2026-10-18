@@ -19,7 +19,7 @@ namespace Kinematic.Runtime
         private readonly List<SweepBodyState> sweepBodyStates = new();
         private readonly List<SweepContact> sweepContacts = new();
 
-        private const int MaxSlideIterationCount = 4;
+        private const int MaxSlideIterationCount = 1;
         private const float MinMoveDistance = 0.000001f;
         private const float SweepDirectionEpsilon = 0.000001f;
 
@@ -27,12 +27,14 @@ namespace Kinematic.Runtime
         {
             internal Vector2 RemainingMoveDelta { get; set; }
             internal int SlideIterationCount { get; set; }
+            internal MovePriority PushPriority { get; set; }
             internal bool HasMoveDelta => RemainingMoveDelta.sqrMagnitude > MinMoveDistance * MinMoveDistance;
 
-            internal SweepBodyState(Vector2 moveDelta)
+            internal SweepBodyState(Vector2 moveDelta, MovePriority pushPriority)
             {
                 RemainingMoveDelta = moveDelta;
                 SlideIterationCount = 0;
+                PushPriority = pushPriority;
             }
         }
 
@@ -60,7 +62,7 @@ namespace Kinematic.Runtime
         {
             foreach (var body in dynamicBodies)
             {
-                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta()));
+                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), body.Priority));
             }
 
             Sweep();
@@ -170,12 +172,27 @@ namespace Kinematic.Runtime
 
                 foreach (var contact in sweepContacts)
                 {
-                    SlideSweepBody(contact.BodyAIndex, contact.Normal);
-
-                    if (contact.BodyBIndex >= 0)
+                    if (contact.BodyBIndex < 0)
                     {
+                        SlideSweepBody(contact.BodyAIndex, contact.Normal);
+                        continue;
+                    }
+
+                    var priorityA = sweepBodyStates[contact.BodyAIndex].PushPriority;
+                    var priorityB = sweepBodyStates[contact.BodyBIndex].PushPriority;
+                    if (priorityA == priorityB)
+                    {
+                        SlideSweepBody(contact.BodyAIndex, contact.Normal);
                         // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
                         SlideSweepBody(contact.BodyBIndex, -contact.Normal);
+                    }
+                    else if ((int)priorityA < (int)priorityB)
+                    {
+                        SlideLowerPriorityBody(contact.BodyAIndex, contact.BodyBIndex, contact.Normal);
+                    }
+                    else
+                    {
+                        SlideLowerPriorityBody(contact.BodyBIndex, contact.BodyAIndex, -contact.Normal);
                     }
                 }
             }
@@ -221,6 +238,52 @@ namespace Kinematic.Runtime
                 // remainMoveDelta 성분에서 hit.Normal과 반대 방향 성분 즉, 충돌하려는 방향 성분을 제거한다.
                 state.RemainingMoveDelta -= normal * intoSurface;
                 sweepBodyStates[bodyIndex] = state;
+            }
+        }
+
+        private void SlideLowerPriorityBody(int lowerPriorityIndex, int higherPriorityIndex, Vector2 normal)
+        {
+            var lowerState = sweepBodyStates[lowerPriorityIndex];
+            var higherState = sweepBodyStates[higherPriorityIndex];
+            if (lowerState.SlideIterationCount >= MaxSlideIterationCount)
+            {
+                // 벽 등에 막혀 낮은 바디를 더 밀 수 없다면 접촉을 유지하고 높은 바디도 제한한다.
+                // 낮은 바디 자신의 안쪽 이동부터 제거하여 낮은 바디가 높은 바디를 밀지는 않게 한다.
+                SlideSweepBody(lowerPriorityIndex, normal);
+                lowerState = sweepBodyStates[lowerPriorityIndex];
+                var blockedIntoSurface = Vector2.Dot(lowerState.RemainingMoveDelta - higherState.RemainingMoveDelta, normal);
+                if (blockedIntoSurface < 0f)
+                {
+                    if (higherState.SlideIterationCount >= MaxSlideIterationCount)
+                    {
+                        higherState.RemainingMoveDelta = Vector2.zero;
+                    }
+                    else
+                    {
+                        higherState.RemainingMoveDelta += normal * blockedIntoSurface;
+                        higherState.SlideIterationCount++;
+                    }
+
+                    sweepBodyStates[higherPriorityIndex] = higherState;
+                }
+
+                return;
+            }
+
+            // 높은 바디의 이동은 유지하고, 낮은 바디의 상대 이동에서 표면 안쪽 성분만 제거한다.
+            // 낮은 바디가 정지해 있어도 높은 바디가 접근하면 같은 법선 방향으로 밀려난다.
+            var relativeMoveDelta = lowerState.RemainingMoveDelta - higherState.RemainingMoveDelta;
+            var intoSurface = Vector2.Dot(relativeMoveDelta, normal);
+            if (intoSurface < 0f)
+            {
+                lowerState.RemainingMoveDelta -= normal * intoSurface;
+                // 자기 이동을 취소한 경우가 아니라 높은 바디의 접근 이동에 밀렸을 때만 우선순위를 전달한다.
+                if (Vector2.Dot(higherState.RemainingMoveDelta, normal) > 0f)
+                {
+                    lowerState.PushPriority = higherState.PushPriority;
+                }
+                lowerState.SlideIterationCount++;
+                sweepBodyStates[lowerPriorityIndex] = lowerState;
             }
         }
 

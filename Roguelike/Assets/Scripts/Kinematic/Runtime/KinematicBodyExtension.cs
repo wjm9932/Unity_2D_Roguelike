@@ -7,6 +7,8 @@ namespace Kinematic.Runtime
     {
         private static readonly int ghostLayerMask = LayerMask.GetMask("Pawn");
 
+        private const float Epsilon = 0.00001f;
+
         internal static bool CanGhostThrough(this KinematicBody bodyA, KinematicBody bodyB) => (ghostLayerMask & (1 << bodyB.Layer)) != 0;
 
         internal static bool CanCollideWith(this KinematicBody bodyA, KinematicBody bodyB)
@@ -21,6 +23,17 @@ namespace Kinematic.Runtime
             return Physics2D.GetIgnoreLayerCollision(bodyA.Layer, bodyB.Layer) == false;
         }
 
+        internal static void GetPriorityCorrections(in Contact contact, KinematicCorrectionState correctionStateA, KinematicCorrectionState correctionStateB, out Vector2 correctionA, out Vector2 correctionB)
+        {
+            // PushPriority가 낮은 바디를 보정한다.
+            var lowerIsA = (int)correctionStateA.PushPriority < (int)correctionStateB.PushPriority;
+
+            // 낮은 우선순위의 바디에 MTV 전체를 적용한다.
+            // 다른 바디나 벽에 의해 발생하는 겹침은 이후 Iteration에서 해결한다.
+            correctionA = lowerIsA ? contact.SeparationMtv : Vector2.zero;
+            correctionB = lowerIsA ? Vector2.zero : -contact.SeparationMtv;
+        }
+
         internal static bool TryCollide(this KinematicBody bodyA, KinematicBody bodyB, out Contact contact)
         {
             return TryCollide(bodyA.Center, bodyA.Shape, bodyB.Center, bodyB.Shape, out contact);
@@ -30,7 +43,7 @@ namespace Kinematic.Runtime
         {
             contact = default;
 
-            return (shapeA.Shape, shapeB.Shape) switch
+            var hasCollision = (shapeA.Shape, shapeB.Shape) switch
             {
                 (Shape.Circle, Shape.Circle) =>
                     TryCircleCircle(centerA, shapeA.Radius, centerB, shapeB.Radius, out contact),
@@ -46,6 +59,15 @@ namespace Kinematic.Runtime
 
                 _ => false
             };
+
+            // 부동소수점 정밀도 한계로, 분담한 미세 MTV를 좌표에 더해도 반올림되어 실제 위치가 바뀌지 않을 수 있다.
+            // 이로 인해 충돌은 계속 검출되지만 겹침은 해소되지 않는 반복을 막기 위해 허용 오차 이하의 침투는 무시한다.
+            if (hasCollision == false || contact.PenetrationDepth <= Epsilon)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private static bool TryBoxBox(Vector2 centerA, Vector2 halfExtentsA, Vector2 centerB, Vector2 halfExtentsB, out Contact contact)
