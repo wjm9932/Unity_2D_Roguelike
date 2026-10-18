@@ -18,22 +18,6 @@ namespace Kinematic.Data
         Box,
     }
 
-    public readonly struct Contact
-    {
-        // 침투 깊이
-        public float PenetrationDepth { get; }
-        // A와B의 충돌 정보를 저장할 때 항상 B->A 방향으로 Normal을 구한다.
-        public Vector2 SeparationNormal { get; }
-        // 크기와 방향을 가지는 MTV
-        public Vector2 SeparationMtv => SeparationNormal * PenetrationDepth;
-
-        public Contact(Vector2 separationNormal, float penetrationDepth)
-        {
-            SeparationNormal = separationNormal;
-            PenetrationDepth = penetrationDepth;
-        }
-    }
-
     [Serializable]
     public struct ColliderInfo
     {
