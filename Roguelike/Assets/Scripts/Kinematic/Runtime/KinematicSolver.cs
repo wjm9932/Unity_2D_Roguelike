@@ -176,6 +176,7 @@ namespace Kinematic.Runtime
 
                     var correctionStateA = correctionStates[bodyAIndex];
                     var correctionStateB = correctionStates[bodyBIndex];
+
                     if (correctionStateA.PushPriority != correctionStateB.PushPriority)
                     {
                         // 우선순위가 낮은 바디를 먼저 보정한다.
