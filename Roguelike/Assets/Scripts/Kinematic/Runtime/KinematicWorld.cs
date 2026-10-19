@@ -6,7 +6,15 @@ namespace Kinematic.Runtime
 {
     public static class KinematicWorld
     {
-        public static void Init(in AABB bounds, bool useSweep) => KinematicSimulation.Instance.Init(bounds, useSweep);
+        internal static KinematicSettings Settings { get; private set; }
+
+        public static void Init(in AABB bounds)
+        {
+            Settings = KinematicSettings.Load();
+
+            KinematicSimulation.Instance.Init(bounds);
+        }
+
 
         public static void Register(KinematicBody body) => KinematicSimulation.Instance.Register(body);
 

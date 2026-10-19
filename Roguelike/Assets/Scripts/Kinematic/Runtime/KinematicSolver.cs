@@ -1,3 +1,4 @@
+using Kinematic.Data;
 using Kinematic.Interface;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,14 +12,16 @@ namespace Kinematic.Runtime
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         private readonly IKinematicMovementSolver movementSolver;
         private readonly List<KinematicCorrectionState> correctionStates = new();
+        private CollisionDetection CollisionDetection => KinematicWorld.Settings.CollisionDetection;
+        private OverlapResolutionMode OverlapResolutionMode => KinematicWorld.Settings.OverlapResolutionMode;
 
         private const int MaxSolverIterationCount = 2;
 
-        internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, bool sweep)
+        internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
-            movementSolver = sweep ? new KinematicSweepSolver(statics, dynamics, correctionStates) : new KinematicDiscreteSolver(statics, dynamics, correctionStates);
+            movementSolver = CollisionDetection == CollisionDetection.Sweep ? new KinematicSweepSolver(statics, dynamics, correctionStates) : new KinematicDiscreteSolver(statics, dynamics, correctionStates);
         }
 
         internal void Solve()

@@ -16,7 +16,7 @@ namespace Kinematic.Runtime
         private readonly List<Vector2> discreteMoveDeltas = new();
         private readonly IReadOnlyList<KinematicCorrectionState> correctionStates;
 
-        private const int MaxSolverIterationCount = 16;
+        private int MaxSolverIterationCount => KinematicWorld.Settings.MaxSolverIterationCount;
         private const float MinMoveDistance = 0.000001f;
 
         internal KinematicDiscreteSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, IReadOnlyList<KinematicCorrectionState> initialCorrectionStates)
