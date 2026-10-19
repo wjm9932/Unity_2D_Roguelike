@@ -32,6 +32,9 @@ namespace Kinematic.Runtime
             // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
             SolveInitialCollisions();
 
+            // 초기 겹침 보정에서 승계한 우선순위는 이동 solving에 전달하지 않는다.
+            KinematicCorrectionState.Reset(correctionStates, dynamicBodies);
+
             movementSolver.Solve();
 
             CompleteGhostRecovery();
