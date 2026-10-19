@@ -18,7 +18,7 @@ namespace Kinematic.Data
     [CreateAssetMenu(fileName = "KinematicSettings", menuName = "Kinematic/Settings", order = 1)]
     public class KinematicSettings : ScriptableObject
     {
-        private const string DataPath = "kinematic_settings.asset";
+        private const string DataPath = "kinematic_settings";
 
         private static KinematicSettings defaultSettings;
         // 기본 세팅 값
