@@ -141,7 +141,7 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
-                    dynamicBody.ApplyCorrection(contact.SeparationMtv);
+                    ApplyInitialCorrection(dynamicBody, contact.SeparationMtv);
                     correctionStates[bodyIndex].InheritPushPriority(int.MaxValue, contact.SeparationMtv);
                     hasCollision = true;
                 }
@@ -201,8 +201,8 @@ namespace Kinematic.Runtime
                         correctionB = -contact.SeparationMtv * 0.5f;
                     }
 
-                    bodyA.ApplyCorrection(correctionA);
-                    bodyB.ApplyCorrection(correctionB);
+                    ApplyInitialCorrection(bodyA, correctionA);
+                    ApplyInitialCorrection(bodyB, correctionB);
 
                     correctionStateA.InheritPushPriority(correctionStateB.PushPriority, correctionA);
                     correctionStateB.InheritPushPriority(correctionStateA.PushPriority, correctionB);
@@ -210,6 +210,18 @@ namespace Kinematic.Runtime
             }
 
             return hasCollision;
+        }
+
+        private void ApplyInitialCorrection(KinematicBody body, Vector2 correction)
+        {
+            if (OverlapResolutionMode == OverlapResolutionMode.Smooth)
+            {
+                body.ApplySmoothCorrection(correction);
+            }
+            else
+            {
+                body.ApplyCorrection(correction);
+            }
         }
 
         private void SyncDynamicTransforms()

@@ -15,6 +15,14 @@ namespace Kinematic.Runtime
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
         private Vector2? pendingTeleportPosition;
+        
+        #region Smooth Correction
+        private Vector2 smoothCorrectionOffset;
+        private Vector2 smoothCorrectionStartOffset;
+        private float smoothCorrectionElapsed;
+        private bool isSmoothingCorrection;
+        private const float InverseSmoothCorrectionDuration = 1f / 0.12f;
+        #endregion
 
 #if UNITY_EDITOR
         internal string Name { get; }
@@ -132,11 +140,37 @@ namespace Kinematic.Runtime
 
         internal void ApplyCorrection(Vector2 mtv) => anchorPosition += mtv;
 
+        internal void ApplySmoothCorrection(Vector2 mtv)
+        {
+            smoothCorrectionOffset -= mtv;
+            smoothCorrectionStartOffset = smoothCorrectionOffset;
+            smoothCorrectionElapsed = 0f;
+            isSmoothingCorrection = true;
+
+            ApplyCorrection(mtv);
+        }
+
         internal void ApplyMovement(Vector2 delta) => anchorPosition += delta;
 
         internal void SyncTransform()
         {
-            target.position = anchorPosition;
+            if (isSmoothingCorrection)
+            {
+                smoothCorrectionElapsed += Time.deltaTime;
+                var progress = Mathf.Clamp01(smoothCorrectionElapsed * InverseSmoothCorrectionDuration);
+                // ease in-out
+                var easedProgress = progress * progress * (3f - 2f * progress);
+                smoothCorrectionOffset = smoothCorrectionStartOffset * (1f - easedProgress);
+
+                if (progress >= 1f)
+                {
+                    isSmoothingCorrection = false;
+                    smoothCorrectionOffset = Vector2.zero;
+                    smoothCorrectionStartOffset = Vector2.zero;
+                }
+            }
+
+            target.position = anchorPosition + smoothCorrectionOffset;
 
 #if UNITY_EDITOR
             DrawMovementDebug();
