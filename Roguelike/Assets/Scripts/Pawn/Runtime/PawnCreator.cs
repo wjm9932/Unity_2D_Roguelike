@@ -6,6 +6,7 @@ using Pawn.Runtime.StatsBehaviour;
 using Pawn.Runtime.Behaviour;
 using UnityEngine;
 using Foundations;
+using Kinematic.Runtime;
 
 namespace Pawn.Runtime
 {
@@ -23,10 +24,11 @@ namespace Pawn.Runtime
 
             var controller = new ManualPawnController();
             var statsBehaviour = new PawnStatsBehaviour(statsDef);
-            var moveRequests = new MoveRequestQueue();
-            var mover = new PawnMover(container.transform, assetDef.ColiderInfo, statsDef.ActiveAccelerationCurve, statsDef.PassiveDecelerationCurve, moveRequests);
-            var behaviour = new PawnBehaviour(container.transform, moveRequests.Receiver, pawnDefinition.PawnStatsDefinition);
-            var pawn = new Pawn(controller, statsBehaviour, behaviour, mover);
+            var body = new KinematicBody(container.transform,assetDef.ColiderInfo, assetDef.MovePriority);
+            var (requestQueue, requestCollector) = MoveRequestQueue.Create();
+            var mover = new PawnMover(new PawnMotor(body), requestQueue, statsDef.ActiveAccelerationCurve, statsDef.PassiveDecelerationCurve);
+            var behaviour = new PawnBehaviour(statsDef, container.transform, requestCollector, new PawnBody(body));
+            var pawn = new Pawn(controller, statsBehaviour, behaviour, mover, body);
 
             // 이 어뎁터 구조는 고민 필요
             var adapter = container.AddComponent<PawnAdapter>();

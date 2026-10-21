@@ -13,7 +13,7 @@ namespace Kinematic.Runtime
         internal KinematicCast Cast { get; private set; }
         private bool isInit = false;
 
-        internal void Init(in AABB bounds, bool useSweep)
+        internal void Init(in AABB bounds)
         {
             if (isInit)
             {
@@ -22,7 +22,7 @@ namespace Kinematic.Runtime
 
             staticBodies = new QuadTree(bounds);
             dynamicBodies = new List<KinematicBody>();
-            solver = new KinematicSolver(staticBodies, dynamicBodies, useSweep);
+            solver = new KinematicSolver(staticBodies, dynamicBodies);
             Cast = new KinematicCast(staticBodies, dynamicBodies);
             isInit = true;
         }

@@ -1,6 +1,7 @@
+using Kinematic.Data;
 using Kinematic.Interface;
-using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Kinematic.Runtime
 {
@@ -10,14 +11,18 @@ namespace Kinematic.Runtime
         private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         private readonly IKinematicMovementSolver movementSolver;
+        // Initial에서 전달받은 우선순위는 Initial 내부에서만 사용한다.
+        private readonly List<int> initialPushPriorities = new();
+        private CollisionDetection CollisionDetection => KinematicWorld.Settings.CollisionDetection;
+        private OverlapResolutionMode OverlapResolutionMode => KinematicWorld.Settings.OverlapResolutionMode;
 
-        private const int MaxSolverIterationCount = 16;
+        private const int MaxSolverIterationCount = 2;
 
-        internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, bool sweep)
+        internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
-            movementSolver = sweep ? new KinematicSweepSolver(statics, dynamics) : new KinematicDiscreteSolver(statics, dynamics);
+            movementSolver = CollisionDetection == CollisionDetection.Sweep ? new KinematicSweepSolver(statics, dynamics) : new KinematicDiscreteSolver(statics, dynamics);
         }
 
         internal void Solve()
@@ -45,6 +50,11 @@ namespace Kinematic.Runtime
 
         private void SolveInitialCollisions()
         {
+            foreach (var body in dynamicBodies)
+            {
+                initialPushPriorities.Add((int)body.Priority);
+            }
+
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
                 var hasDynamicStaticCollision = SolveInitialDynamicStaticCollisions();
@@ -55,6 +65,8 @@ namespace Kinematic.Runtime
                     break;
                 }
             }
+
+            initialPushPriorities.Clear();
         }
 
         private void CompleteGhostRecovery()
@@ -132,7 +144,8 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
-                    dynamicBody.ApplyCorrection(contact.SeparationMtv);
+                    ApplyInitialCorrection(dynamicBody, contact.SeparationMtv);
+                    InheritInitialPushPriority(bodyIndex, int.MaxValue, contact.SeparationMtv);
                     hasCollision = true;
                 }
             }
@@ -162,33 +175,65 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
+                    hasCollision = true;
+
                     var recoverBodyA = bodyA.NeedsGhostRecovery && bodyA.CanGhostThrough(bodyB);
                     var recoverBodyB = bodyB.NeedsGhostRecovery && bodyB.CanGhostThrough(bodyA);
 
-                    // 한쪽만 고스트를 종료했다면 그 바디가 MTV를 전부 받아 상대를 밀지 않는다.
-                    if (recoverBodyA != recoverBodyB)
+                    var correctionA = Vector2.zero;
+                    var correctionB = Vector2.zero;
+
+                    var pushPriorityA = initialPushPriorities[bodyAIndex];
+                    var pushPriorityB = initialPushPriorities[bodyBIndex];
+
+                    if (pushPriorityA != pushPriorityB)
                     {
-                        if (recoverBodyA)
-                        {
-                            bodyA.ApplyCorrection(contact.SeparationMtv);
-                        }
-                        else
-                        {
-                            bodyB.ApplyCorrection(-contact.SeparationMtv);
-                        }
+                        // 우선순위가 낮은 바디를 먼저 보정한다.
+                        KinematicBodyExtension.GetPriorityCorrections(contact, pushPriorityA, pushPriorityB, out correctionA, out correctionB);
+                    }
+                    // 같은 우선순위에서 한쪽만 고스트를 종료했다면 기존처럼 종료한 바디만 보정한다.
+                    else if (recoverBodyA != recoverBodyB)
+                    {
+                        correctionA = recoverBodyA ? contact.SeparationMtv : Vector2.zero;
+                        correctionB = recoverBodyB ? -contact.SeparationMtv : Vector2.zero;
                     }
                     else
                     {
                         // 일반 겹침은 두 바디가 MTV를 절반씩 나눠 받는다.
-                        bodyA.ApplyCorrection(contact.SeparationMtv * 0.5f);
-                        bodyB.ApplyCorrection(-contact.SeparationMtv * 0.5f);
+                        correctionA = contact.SeparationMtv * 0.5f;
+                        correctionB = -contact.SeparationMtv * 0.5f;
                     }
 
-                    hasCollision = true;
+                    ApplyInitialCorrection(bodyA, correctionA);
+                    ApplyInitialCorrection(bodyB, correctionB);
+
+                    InheritInitialPushPriority(bodyAIndex, pushPriorityB, correctionA);
+                    InheritInitialPushPriority(bodyBIndex, initialPushPriorities[bodyAIndex], correctionB);
                 }
             }
 
             return hasCollision;
+        }
+
+        private void InheritInitialPushPriority(int bodyIndex, int sourcePriority, Vector2 correction)
+        {
+            // Initial에서는 접근 이동량이 없어도 실제 보정이 발생하면 우선순위를 전달한다.
+            if (sourcePriority > initialPushPriorities[bodyIndex] && correction.sqrMagnitude > 0f)
+            {
+                initialPushPriorities[bodyIndex] = sourcePriority;
+            }
+        }
+
+        private void ApplyInitialCorrection(KinematicBody body, Vector2 correction)
+        {
+            if (OverlapResolutionMode == OverlapResolutionMode.Smooth)
+            {
+                body.ApplySmoothCorrection(correction);
+            }
+            else
+            {
+                body.ApplyCorrection(correction);
+            }
         }
 
         private void SyncDynamicTransforms()
@@ -199,6 +244,10 @@ namespace Kinematic.Runtime
             }
         }
 
-        internal void Dispose() => movementSolver.Dispose();
+        internal void Dispose()
+        {
+            initialPushPriorities.Clear();
+            movementSolver.Dispose();
+        }
     }
 }

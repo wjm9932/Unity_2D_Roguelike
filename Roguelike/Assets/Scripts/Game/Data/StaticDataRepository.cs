@@ -10,9 +10,9 @@ namespace Game.Data
 
         public static StaticDataRepository Instance => instance ??= new StaticDataRepository();
 
-        private StaticDataRepository() { }
-
         private HeroTable heroTable;
+
+        private StaticDataRepository() { }
 
         public static async UniTask LoadAsync()
         {

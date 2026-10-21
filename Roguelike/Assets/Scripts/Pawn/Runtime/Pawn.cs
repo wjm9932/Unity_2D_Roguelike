@@ -2,6 +2,7 @@ using Foundations;
 using EventSystem;
 using Pawn.Interface;
 using System;
+using Kinematic.Runtime;
 
 namespace Pawn.Runtime
 {
@@ -11,18 +12,21 @@ namespace Pawn.Runtime
         public IPawnStatsBehaviour PawnStatsBehaviour => pawnStatsBehaviour;
         public IPawnBehaviour PawnBehaviour => pawnBehaviour;
 
-        private IPawnController pawnController;
-        private IPawnStatsBehaviour pawnStatsBehaviour;
-        private IPawnBehaviour pawnBehaviour;
-        private IPawnMover pawnMover;
+        private readonly IPawnController pawnController;
+        private readonly IPawnStatsBehaviour pawnStatsBehaviour;
+        private readonly IPawnBehaviour pawnBehaviour;
+        private readonly IPawnMover pawnMover;
+        private readonly KinematicBody kinematicBody;
 
-        internal Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMover mover)
+        internal Pawn(IPawnController controller, IPawnStatsBehaviour statsBehaviour, IPawnBehaviour behaviour, IPawnMover mover, KinematicBody body)
         {
             pawnController = controller;
             pawnStatsBehaviour = statsBehaviour;
             pawnBehaviour = behaviour;
             pawnMover = mover;
+            kinematicBody = body;
 
+            KinematicWorld.Register(kinematicBody);
             this.RegisterConsumeMoveRequest();
         }
 
@@ -49,8 +53,9 @@ namespace Pawn.Runtime
         public void Dispose()
         {
             this.UnregisterConsumeMoveRequest();
-
+            KinematicWorld.Unregister(kinematicBody);
             pawnMover.Dispose();
+            // Controller, Stats, Behaviour Dispose 호출
         }
     }
 }

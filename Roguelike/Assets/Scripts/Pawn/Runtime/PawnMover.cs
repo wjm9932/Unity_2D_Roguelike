@@ -1,6 +1,4 @@
-﻿using Kinematic.Data;
-using Kinematic.Runtime;
-using Pawn.Data;
+﻿using Pawn.Data;
 using Pawn.Interface;
 using UnityEngine;
 
@@ -10,8 +8,8 @@ namespace Pawn.Runtime
     {
         private const float PassiveThreshold = 2f;
 
-        private readonly IMoveRequestQueue moveRequests;
-        private readonly KinematicBody kinematicBody;
+        private readonly PawnMotor bodyMover;
+        private readonly IMoveRequestQueue requestQueue;
         private readonly AnimationCurve accelerationCurve;
         private readonly AnimationCurve passiveDecelerationCurve;
         private readonly float PassiveMoveDuration;
@@ -22,15 +20,13 @@ namespace Pawn.Runtime
         private float passiveElapsedTime;
         private bool isPassiveMoving;
 
-        internal PawnMover(Transform owner, ColliderInfo colliderInfo, AnimationCurve accelCurve, AnimationCurve passiveCurve, IMoveRequestQueue requests)
+        internal PawnMover(PawnMotor body, IMoveRequestQueue queue, AnimationCurve accelCurve, AnimationCurve passiveCurve)
         {
-            moveRequests = requests;
-            kinematicBody = new KinematicBody(owner, colliderInfo, false);
+            bodyMover = body;
+            requestQueue = queue;
             accelerationCurve = accelCurve;
             passiveDecelerationCurve = passiveCurve;
             PassiveMoveDuration = passiveCurve.length > 0 ? Mathf.Max(0f, passiveCurve[passiveCurve.length - 1].time) : 0f;
-
-            KinematicWorld.Register(kinematicBody);
         }
 
         void IPawnMover.OnMove(float dt)
@@ -44,8 +40,8 @@ namespace Pawn.Runtime
             var hasTeleport = false;
             var teleportPosition = Vector2.zero;
 
-            // 동일 타입의 요청이 여러 개라면 마지막 요청을 사용한다.
-            while (moveRequests.TryDequeue(out var request))
+            // 이번 프레임에 들어온 이동 요청 순회하면서 일괄 처리
+            while (requestQueue.TryDequeue(out var request))
             {
                 switch (request.MoveType)
                 {
@@ -69,7 +65,7 @@ namespace Pawn.Runtime
             // Teleport는 다른 이동 요청보다 우선한다.
             if (hasTeleport)
             {
-                kinematicBody.Teleport(teleportPosition);
+                bodyMover.Teleport(teleportPosition);
                 return;
             }
 
@@ -84,7 +80,7 @@ namespace Pawn.Runtime
             var activeVelocity = ResolveActiveVelocity(hasActive, requestedActiveVelocity, passiveVelocity, dt);
             var finalVelocity = activeVelocity + passiveVelocity;
 
-            kinematicBody.Move(finalVelocity * dt);
+            bodyMover.Move(finalVelocity * dt);
         }
 
         private void StartPassiveMovement(Vector2 velocity)
@@ -139,8 +135,7 @@ namespace Pawn.Runtime
 
         public void Dispose()
         {
-            moveRequests.Clear();
-            KinematicWorld.Unregister(kinematicBody);
+            requestQueue.Clear();
         }
     }
 }

@@ -31,7 +31,7 @@ namespace Kinematic.Runtime
             }
 
             // Cast 하기 전 이미 겹쳐있다면 겹쳐있는 물체 반환
-            if (KinematicBodyExtension.TryCollide(movingCenter, movingShape, targetBody.Center, targetBody.Shape, out var contact))
+            if (KinematicBodyExtension.TryGetContact(movingCenter, movingShape, targetBody.Center, targetBody.Shape, out var contact))
             {
                 hit = CreateHit(movingCenter, movingShape, targetBody, moveDelta, 0f, contact.SeparationNormal);
 
