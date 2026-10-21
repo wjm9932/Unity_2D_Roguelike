@@ -21,7 +21,7 @@ namespace Kinematic.Runtime
         private Vector2 smoothCorrectionStartOffset;
         private float smoothCorrectionElapsed;
         private bool isSmoothingCorrection;
-        private const float InverseSmoothCorrectionDuration = 1f / 0.12f;
+        private const float InverseSmoothCorrectionDuration = 1f / 0.1f;
         #endregion
 
 #if UNITY_EDITOR
@@ -157,12 +157,11 @@ namespace Kinematic.Runtime
             if (isSmoothingCorrection)
             {
                 smoothCorrectionElapsed += Time.deltaTime;
-                var progress = Mathf.Clamp01(smoothCorrectionElapsed * InverseSmoothCorrectionDuration);
-                // ease in-out
-                var easedProgress = progress * progress * (3f - 2f * progress);
-                smoothCorrectionOffset = smoothCorrectionStartOffset * (1f - easedProgress);
+                var t = Mathf.Clamp01(smoothCorrectionElapsed * InverseSmoothCorrectionDuration);
+                var easeoutProgress = t * (2f - t);
+                smoothCorrectionOffset = smoothCorrectionStartOffset * (1f - easeoutProgress);
 
-                if (progress >= 1f)
+                if (t >= 1f)
                 {
                     isSmoothingCorrection = false;
                     smoothCorrectionOffset = Vector2.zero;
