@@ -32,10 +32,10 @@ namespace Kinematic.Runtime
             KinematicWorld.Register(body);
             dashSubscription = InputManager.Instance.PawnControls.Dash.Subscribe(value =>
             {
-                if (value)
+                if (value && useInput == true)
                 {
-                    //Dash();
-                    Teleport();
+                    Dash();
+                    //Teleport();
                 }
             });
         }
@@ -82,7 +82,6 @@ namespace Kinematic.Runtime
         private void Update()
         {
             if (useInput == false) return;
-
 
             if (isDashing && dashElapsedTime < dashDuration)
             {

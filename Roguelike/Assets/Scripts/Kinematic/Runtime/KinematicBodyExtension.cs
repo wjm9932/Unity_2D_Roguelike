@@ -39,10 +39,10 @@ namespace Kinematic.Runtime
             return Physics2D.GetIgnoreLayerCollision(bodyA.Layer, bodyB.Layer) == false;
         }
 
-        internal static void GetPriorityCorrections(in Contact contact, KinematicCorrectionState correctionStateA, KinematicCorrectionState correctionStateB, out Vector2 correctionA, out Vector2 correctionB)
+        internal static void GetPriorityCorrections(in Contact contact, int pushPriorityA, int pushPriorityB, out Vector2 correctionA, out Vector2 correctionB)
         {
             // PushPriority가 낮은 바디를 보정한다.
-            var lowerIsA = (int)correctionStateA.PushPriority < (int)correctionStateB.PushPriority;
+            var lowerIsA = pushPriorityA < pushPriorityB;
 
             // 낮은 우선순위의 바디에 MTV 전체를 적용한다.
             // 다른 바디나 벽에 의해 발생하는 겹침은 이후 Iteration에서 해결한다.

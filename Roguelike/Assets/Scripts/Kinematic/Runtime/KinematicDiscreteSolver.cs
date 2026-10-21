@@ -12,18 +12,39 @@ namespace Kinematic.Runtime
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         // 쿼리 결과용 버퍼
         private readonly List<KinematicBody> queryResult = new();
-        // 모든 dynamicBodies와 같은 순서로 이동량을 저장하여 동일한 인덱스로 연결한다.
-        private readonly List<Vector2> discreteMoveDeltas = new();
-        private readonly IReadOnlyList<KinematicCorrectionState> correctionStates;
+        // 모든 dynamicBodies와 같은 순서로 이동량과 우선순위를 저장한다.
+        private readonly List<DiscreteBodyState> discreteBodyStates = new();
 
         private int MaxSolverIterationCount => KinematicWorld.Settings.MaxSolverIterationCount;
         private const float MinMoveDistance = 0.000001f;
 
-        internal KinematicDiscreteSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, IReadOnlyList<KinematicCorrectionState> initialCorrectionStates)
+        private struct DiscreteBodyState
+        {
+            internal Vector2 MoveDelta { get; set; }
+            internal int PushPriority { get; private set; }
+            // 보정으로 밀린 바디도 이후 검사에 참여하고, 보정으로 이동이 상쇄되면 제외한다.
+            internal bool HasMoveDelta => MoveDelta.sqrMagnitude > MinMoveDistance * MinMoveDistance;
+
+            internal DiscreteBodyState(Vector2 moveDelta, int pushPriority)
+            {
+                MoveDelta = moveDelta;
+                PushPriority = pushPriority;
+            }
+
+            internal void InheritPushPriority(int sourcePriority, Vector2 sourceMoveDelta, Vector2 correction)
+            {
+                // 상대의 접근 이동이 만든 밀림만 전달한다. 자기 이동을 취소한 보정은 제외한다.
+                if (sourcePriority > PushPriority && Vector2.Dot(sourceMoveDelta, correction) > 0f && correction.sqrMagnitude > 0f)
+                {
+                    PushPriority = sourcePriority;
+                }
+            }
+        }
+
+        internal KinematicDiscreteSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
-            correctionStates = initialCorrectionStates;
         }
 
         public void Solve()
@@ -34,16 +55,15 @@ namespace Kinematic.Runtime
 
         private void SolveDiscreteMovements()
         {
-            // 여기 하나로 합칠 수 있지 않나? 굳이 반복문 두 번?
             foreach (var body in dynamicBodies)
             {
                 var moveDelta = body.ConsumeMoveDelta();
-                discreteMoveDeltas.Add(moveDelta);
+                discreteBodyStates.Add(new DiscreteBodyState(moveDelta, (int)body.Priority));
             }
 
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
-                dynamicBodies[bodyIndex].ApplyMovement(discreteMoveDeltas[bodyIndex]);
+                dynamicBodies[bodyIndex].ApplyMovement(discreteBodyStates[bodyIndex].MoveDelta);
             }
         }
 
@@ -60,13 +80,7 @@ namespace Kinematic.Runtime
                 }
             }
 
-            discreteMoveDeltas.Clear();
-        }
-
-        private bool HasMoveDelta(int bodyIndex)
-        {
-            // 보정으로 밀린 바디도 이후 검사에 참여하고, 보정으로 이동이 상쇄되면 제외한다.
-            return discreteMoveDeltas[bodyIndex].sqrMagnitude > MinMoveDistance * MinMoveDistance;
+            discreteBodyStates.Clear();
         }
 
         // 이동량이 있는 동적 바디만 정적 바디와 검사한다.
@@ -76,7 +90,7 @@ namespace Kinematic.Runtime
 
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
-                if (HasMoveDelta(bodyIndex) == false)
+                if (discreteBodyStates[bodyIndex].HasMoveDelta == false)
                 {
                     continue;
                 }
@@ -87,7 +101,7 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (HasMoveDelta(bodyIndex) == false)
+                    if (discreteBodyStates[bodyIndex].HasMoveDelta == false)
                     {
                         break;
                     }
@@ -98,7 +112,9 @@ namespace Kinematic.Runtime
                     }
 
                     dynamicBody.ApplyCorrection(contact.SeparationMtv);
-                    discreteMoveDeltas[bodyIndex] += contact.SeparationMtv;
+                    var state = discreteBodyStates[bodyIndex];
+                    state.MoveDelta += contact.SeparationMtv;
+                    discreteBodyStates[bodyIndex] = state;
                     hasCollision = true;
                 }
             }
@@ -117,7 +133,7 @@ namespace Kinematic.Runtime
 
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
-                    if (HasMoveDelta(bodyAIndex) == false && HasMoveDelta(bodyBIndex) == false)
+                    if (discreteBodyStates[bodyAIndex].HasMoveDelta == false && discreteBodyStates[bodyBIndex].HasMoveDelta == false)
                     {
                         continue;
                     }
@@ -137,28 +153,27 @@ namespace Kinematic.Runtime
 
                     hasCollision = true;
 
-                    var correctionStateA = correctionStates[bodyAIndex];
-                    var correctionStateB = correctionStates[bodyBIndex];
-                    if (correctionStateA.PushPriority != correctionStateB.PushPriority)
+                    var stateA = discreteBodyStates[bodyAIndex];
+                    var stateB = discreteBodyStates[bodyBIndex];
+                    if (stateA.PushPriority != stateB.PushPriority)
                     {
                         // 낮은 우선순위 바디를 먼저 보정하고, 새로 발생한 겹침은 이후 Iteration에서 해결한다.
-                        KinematicBodyExtension.GetPriorityCorrections(contact, correctionStateA, correctionStateB, out var priorityCorrectionA, out var priorityCorrectionB);
+                        KinematicBodyExtension.GetPriorityCorrections(contact, stateA.PushPriority, stateB.PushPriority, out var priorityCorrectionA, out var priorityCorrectionB);
 
                         bodyA.ApplyCorrection(priorityCorrectionA);
                         bodyB.ApplyCorrection(priorityCorrectionB);
 
-                        discreteMoveDeltas[bodyAIndex] += priorityCorrectionA;
-                        discreteMoveDeltas[bodyBIndex] += priorityCorrectionB;
+                        stateA.MoveDelta += priorityCorrectionA;
+                        stateB.MoveDelta += priorityCorrectionB;
 
-                        correctionStateA.InheritPushPriority(correctionStateB, discreteMoveDeltas[bodyBIndex], priorityCorrectionA);
-                        correctionStateB.InheritPushPriority(correctionStateA, discreteMoveDeltas[bodyAIndex], priorityCorrectionB);
-
+                        stateA.InheritPushPriority(stateB.PushPriority, stateB.MoveDelta, priorityCorrectionA);
+                        stateB.InheritPushPriority(stateA.PushPriority, stateA.MoveDelta, priorityCorrectionB);
                     }
                     else
                     {
                         // 서로 지나쳐 접촉 법선이 뒤집히면 접근한 바디 대신 상대 바디가 보정될 수 있다.
-                        var moveDeltaA = discreteMoveDeltas[bodyAIndex];
-                        var moveDeltaB = discreteMoveDeltas[bodyBIndex];
+                        var moveDeltaA = stateA.MoveDelta;
+                        var moveDeltaB = stateB.MoveDelta;
                         var normal = contact.SeparationNormal;
 
                         // 바디 A의 법선 안쪽 이동량
@@ -190,9 +205,12 @@ namespace Kinematic.Runtime
                         bodyA.ApplyCorrection(correctionA);
                         bodyB.ApplyCorrection(correctionB);
 
-                        discreteMoveDeltas[bodyAIndex] += correctionA;
-                        discreteMoveDeltas[bodyBIndex] += correctionB;
+                        stateA.MoveDelta += correctionA;
+                        stateB.MoveDelta += correctionB;
                     }
+
+                    discreteBodyStates[bodyAIndex] = stateA;
+                    discreteBodyStates[bodyBIndex] = stateB;
                 }
             }
 
@@ -201,6 +219,7 @@ namespace Kinematic.Runtime
 
         public void Dispose()
         {
+            discreteBodyStates.Clear();
         }
     }
 }

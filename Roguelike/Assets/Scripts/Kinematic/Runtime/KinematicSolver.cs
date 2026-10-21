@@ -11,7 +11,8 @@ namespace Kinematic.Runtime
         private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         private readonly IKinematicMovementSolver movementSolver;
-        private readonly List<KinematicCorrectionState> correctionStates = new();
+        // Initial에서 전달받은 우선순위는 Initial 내부에서만 사용한다.
+        private readonly List<int> initialPushPriorities = new();
         private CollisionDetection CollisionDetection => KinematicWorld.Settings.CollisionDetection;
         private OverlapResolutionMode OverlapResolutionMode => KinematicWorld.Settings.OverlapResolutionMode;
 
@@ -21,7 +22,7 @@ namespace Kinematic.Runtime
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
-            movementSolver = CollisionDetection == CollisionDetection.Sweep ? new KinematicSweepSolver(statics, dynamics, correctionStates) : new KinematicDiscreteSolver(statics, dynamics, correctionStates);
+            movementSolver = CollisionDetection == CollisionDetection.Sweep ? new KinematicSweepSolver(statics, dynamics) : new KinematicDiscreteSolver(statics, dynamics);
         }
 
         internal void Solve()
@@ -31,9 +32,6 @@ namespace Kinematic.Runtime
 
             // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
             SolveInitialCollisions();
-
-            // 초기 겹침 보정에서 승계한 우선순위는 이동 solving에 전달하지 않는다.
-            KinematicCorrectionState.Reset(correctionStates, dynamicBodies);
 
             movementSolver.Solve();
 
@@ -52,7 +50,10 @@ namespace Kinematic.Runtime
 
         private void SolveInitialCollisions()
         {
-            KinematicCorrectionState.Reset(correctionStates, dynamicBodies);
+            foreach (var body in dynamicBodies)
+            {
+                initialPushPriorities.Add((int)body.Priority);
+            }
 
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
@@ -64,6 +65,8 @@ namespace Kinematic.Runtime
                     break;
                 }
             }
+
+            initialPushPriorities.Clear();
         }
 
         private void CompleteGhostRecovery()
@@ -142,7 +145,7 @@ namespace Kinematic.Runtime
                     }
 
                     ApplyInitialCorrection(dynamicBody, contact.SeparationMtv);
-                    correctionStates[bodyIndex].InheritPushPriority(int.MaxValue, contact.SeparationMtv);
+                    InheritInitialPushPriority(bodyIndex, int.MaxValue, contact.SeparationMtv);
                     hasCollision = true;
                 }
             }
@@ -180,13 +183,13 @@ namespace Kinematic.Runtime
                     var correctionA = Vector2.zero;
                     var correctionB = Vector2.zero;
 
-                    var correctionStateA = correctionStates[bodyAIndex];
-                    var correctionStateB = correctionStates[bodyBIndex];
+                    var pushPriorityA = initialPushPriorities[bodyAIndex];
+                    var pushPriorityB = initialPushPriorities[bodyBIndex];
 
-                    if (correctionStateA.PushPriority != correctionStateB.PushPriority)
+                    if (pushPriorityA != pushPriorityB)
                     {
                         // 우선순위가 낮은 바디를 먼저 보정한다.
-                        KinematicBodyExtension.GetPriorityCorrections(contact, correctionStateA, correctionStateB, out correctionA, out correctionB);
+                        KinematicBodyExtension.GetPriorityCorrections(contact, pushPriorityA, pushPriorityB, out correctionA, out correctionB);
                     }
                     // 같은 우선순위에서 한쪽만 고스트를 종료했다면 기존처럼 종료한 바디만 보정한다.
                     else if (recoverBodyA != recoverBodyB)
@@ -204,12 +207,21 @@ namespace Kinematic.Runtime
                     ApplyInitialCorrection(bodyA, correctionA);
                     ApplyInitialCorrection(bodyB, correctionB);
 
-                    correctionStateA.InheritPushPriority(correctionStateB.PushPriority, correctionA);
-                    correctionStateB.InheritPushPriority(correctionStateA.PushPriority, correctionB);
+                    InheritInitialPushPriority(bodyAIndex, pushPriorityB, correctionA);
+                    InheritInitialPushPriority(bodyBIndex, initialPushPriorities[bodyAIndex], correctionB);
                 }
             }
 
             return hasCollision;
+        }
+
+        private void InheritInitialPushPriority(int bodyIndex, int sourcePriority, Vector2 correction)
+        {
+            // Initial에서는 접근 이동량이 없어도 실제 보정이 발생하면 우선순위를 전달한다.
+            if (sourcePriority > initialPushPriorities[bodyIndex] && correction.sqrMagnitude > 0f)
+            {
+                initialPushPriorities[bodyIndex] = sourcePriority;
+            }
         }
 
         private void ApplyInitialCorrection(KinematicBody body, Vector2 correction)
@@ -234,7 +246,7 @@ namespace Kinematic.Runtime
 
         internal void Dispose()
         {
-            correctionStates.Clear();
+            initialPushPriorities.Clear();
             movementSolver.Dispose();
         }
     }

@@ -1,6 +1,4 @@
-using Kinematic.Data;
 using Kinematic.Interface;
-using Kinematic.Runtime.Spatial;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,7 +10,6 @@ namespace Kinematic.Runtime
         private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
         // 동적 바디 조회용 리스트
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
-        private readonly IReadOnlyList<KinematicCorrectionState> initialCorrectionStates;
         // 쿼리 결과용 버퍼
         private readonly List<KinematicBody> queryResult = new();
         // 모든 dynamicBodies와 같은 순서로 상태를 생성하여 동일한 인덱스로 연결한다.
@@ -54,11 +51,10 @@ namespace Kinematic.Runtime
             }
         }
 
-        internal KinematicSweepSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics, IReadOnlyList<KinematicCorrectionState> correctionStates)
+        internal KinematicSweepSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
-            initialCorrectionStates = correctionStates;
         }
 
         public void Solve()
@@ -66,8 +62,7 @@ namespace Kinematic.Runtime
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
                 var body = dynamicBodies[bodyIndex];
-                var pushPriority = initialCorrectionStates[bodyIndex].PushPriority;
-                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), pushPriority));
+                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), (int)body.Priority));
             }
 
             Sweep();
