@@ -1,4 +1,6 @@
-﻿namespace Pawn.Interface
+﻿using Pawn.Data;
+
+namespace Pawn.Interface
 {
     public interface IPawnStatsBehaviour
     {

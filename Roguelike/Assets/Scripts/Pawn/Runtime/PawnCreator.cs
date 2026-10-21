@@ -17,11 +17,14 @@ namespace Pawn.Runtime
 
             var avatar = Object.Instantiate(pawnDefinition.PawnAssetDefinition.Avatar, container.transform);
             avatar.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            
+            var assetDef = pawnDefinition.PawnAssetDefinition;
+            var statsDef = pawnDefinition.PawnStatsDefinition;
 
             var controller = new ManualPawnController();
-            var statsBehaviour = new PawnStatsBehaviour(pawnDefinition.PawnStatsDefinition);
+            var statsBehaviour = new PawnStatsBehaviour(statsDef);
             var moveRequests = new MoveRequestQueue();
-            var mover = new PawnMover(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnStatsDefinition.AccelerationCurve, moveRequests);
+            var mover = new PawnMover(container.transform, assetDef.ColiderInfo, statsDef.ActiveAccelerationCurve, statsDef.PassiveDecelerationCurve, moveRequests);
             var behaviour = new PawnBehaviour(container.transform, moveRequests.Receiver, pawnDefinition.PawnStatsDefinition);
             var pawn = new Pawn(controller, statsBehaviour, behaviour, mover);
 
