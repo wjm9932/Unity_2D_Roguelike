@@ -51,6 +51,8 @@ var count = Kinematics.ShapeCastAll(body, dashMoveDelta, dashHits, LayerMask.Get
 
 `Distance`는 이동 바디가 처음 접촉할 때까지 이동한 거리이며 대상 중심까지의 거리가 아니다. 대쉬 종료점이 대상 중심을 넘는지 판단하려면 `hit.Body.Center`를 이동 방향으로 투영해 비교한다. 대쉬 허용 여부와 이동 거리 결정은 호출자가 처리한다.
 
+시작 겹침은 `TryGetContact()`로 검사한다. Initial·Discrete 위치 보정의 `TryCollide()`와 달리 침투 허용 오차 `1e-5`를 적용하지 않으므로 미세 겹침도 `Fraction = 0`으로 반환한다. Sweep은 이 결과에서 스침과 바깥 방향 이동을 제외하고, 안쪽 이동만 제한한다. 공개 Cast 결과의 존재와 실제 위치 보정 여부는 같은 판정이 아니다.
+
 ## 형상을 점의 이동으로 바꾸는 방식
 
 움직이는 형상의 크기를 대상 형상에 합쳐 확장하고, 움직이는 형상의 중심을 점으로 검사한다. 두 형상의 Minkowski 확장을 이용하여 형상끼리의 이동 검사를 점과 확장 형상의 교차 검사로 바꾸는 방식이다.

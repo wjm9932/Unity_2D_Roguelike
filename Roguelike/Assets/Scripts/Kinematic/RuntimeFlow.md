@@ -19,7 +19,7 @@ Kinematic 단계는 `KinematicWorld.Tick()`을 호출하고, 월드가 아직 �
 
 | 정보 | 역할 |
 | --- | --- |
-| 기준 위치 | 게임 오브젝트를 배치할 계산용 XY 위치 |
+| 기준 위치 (`anchorPosition`) | 이동·충돌·Cast에서 사용하는 계산용 XY 위치 |
 | 형상 중심 | 기준 위치에 `ColliderInfo.Offset`을 더한 충돌 중심 |
 | 이동 요청 | 해당 처리 단계에서 사용할 누적 변위 |
 | Teleport 요청 | 해당 처리 단계에서 적용할 목적지 |
@@ -53,7 +53,8 @@ public 생성자로 실제 `KinematicBody`를 생성한다. 호출자는 바디�
 | 1 | 동적 바디의 Teleport 목적지 적용 | 이동 계산을 시작할 위치 결정 |
 | 2 | 시작부터 겹친 바디의 접촉 해소 | 이동 경로 검사 전에 초기 침투 보정 |
 | 3 | 선택한 이동 솔버 실행 | Sweep 또는 Discrete 방식으로 요청 변위 처리 |
-| 4 | 동적 바디의 Transform 동기화 | 최종 계산 위치를 게임 오브젝트에 반영 |
+| 4 | Ghost 복구 완료 여부 확인 | 종료한 바디에 통과 대상과의 겹침이 남았는지 검사 |
+| 5 | 동적 바디의 Transform 동기화 | 계산 위치와 Smooth 표시 오프셋을 게임 오브젝트에 반영 |
 
 초기 겹침 해소와 이동 후 겹침 해소는 서로 다른 단계다. Sweep과 Discrete 모두 초기 겹침 해소를 거친다. 이동 후 겹침 해소는 Discrete 솔버에서 수행한다.
 
@@ -65,19 +66,44 @@ public 생성자로 실제 `KinematicBody`를 생성한다. 호출자는 바디�
 | --- | --- |
 | 동적 A / 정적 B | A에 MTV 전체 적용 |
 | 같은 우선순위의 동적 A / 동적 B | A에 MTV의 절반, B에 반대 방향 절반 적용 |
-| 다른 우선순위의 동적 A / 동적 B | 낮은 바디에 MTV 우선 적용. 벽이나 다른 높은 바디에 막힌 분량은 현재 쌍의 높은 바디를 반대로 보정 |
+| 다른 우선순위의 동적 A / 동적 B | 낮은 바디에 MTV 전체 적용. 높은 바디의 보정은 0 |
 
-동적 바디의 초기 보정은 이동 요청이나 질량의 비율을 사용하지 않는다. 같은 우선순위의 두 바디가 정지해 있어도 시작부터 겹쳐 있다면 절반씩 분리한다. 같은 우선순위에서 한쪽만 Ghost를 종료한 경우에는 기존처럼 종료한 바디만 보정한다. 우선순위가 다르면 Ghost 종료 여부와 관계없이 낮은 바디를 우선 보정하며, 벽이나 다른 높은 바디 때문에 적용할 수 없는 분량은 현재 쌍의 높은 바디에도 보정한다.
+동적 바디의 초기 보정은 이동 요청이나 질량의 비율을 사용하지 않는다. 같은 유효 우선순위의 두 바디가 정지해 있어도 시작부터 겹쳐 있다면 절반씩 분리한다. 같은 우선순위에서 한쪽만 Ghost를 종료한 경우에는 종료한 바디만 보정한다. 우선순위가 다르면 Ghost 종료 여부와 관계없이 낮은 바디에 MTV 전체를 적용한다.
 
-보정 때문에 되돌아온 바디는 그 원인이 된 같은 순위 또는 낮은 순위의 접촉을 초기 겹침 해소 동안 기억한다. 다음 충돌 쌍에서 이 바디를 다시 밀 때 해당 접촉의 현재 위치도 검사하여, 여러 바디를 거친 막힘이 앞쪽 바디까지 전달되도록 한다. 초기 겹침과 Discrete 이동 후 겹침은 각 단계에서 별도로 기록을 초기화한다.
+Initial을 시작할 때 `initialPushPriorities`에 각 바디의 원래 `Priority`를 채운다. 정적 접촉에서 실제 보정이 발생하면 `int.MaxValue`를, 동적 접촉에서는 실제로 보정된 바디에 더 높은 상대의 유효 우선순위를 전달한다. 접근 이동량은 요구하지 않는다. 따라서 같은 Initial 안에서는 벽의 권한과 연쇄 밀림이 후속 쌍의 우선순위에 영향을 준다.
 
-초기 겹침의 반복은 실제 좌표가 보정되었을 때만 이어간다. float 정밀도 때문에 MTV를 더해도 좌표가 그대로라면 반복을 종료하며, 원시 겹침 검사 자체에 침투 허용 오차를 추가하지 않는다. 작은 MTV의 보정 경로도 Cast의 최소 이동 거리 때문에 검사가 생략되지 않도록 검사 거리와 적용 거리를 구분한다.
+Initial 종료 시 이 버퍼를 비운다. 이동 솔버는 자신의 `DiscreteBodyState` 또는 `SweepBodyState`를 원래 바디 우선순위로 생성한다. Initial과 이동이 공유하는 상태 객체나 중간 `Reset`은 없으며, Initial의 `int.MaxValue` 권한도 이동에 넘어가지 않는다.
 
-정적 후보는 각 동적 바디의 현재 Bounds로 QuadTree를 조회한다. 동적 쌍은 목록에서 서로 다른 쌍을 한 번씩 검사한다. 한 보정이 다른 접촉을 만들 수 있으므로 정적 접촉과 동적 접촉 처리를 반복한다. 최대 16회이며, 한 회차에서 둘 다 접촉을 찾지 못하면 종료한다.
+정적 후보는 각 동적 바디의 현재 Bounds로 QuadTree를 조회한다. 동적 쌍은 목록에서 서로 다른 쌍을 한 번씩 검사한다. 한 보정이 다른 접촉을 만들 수 있으므로 정적 접촉과 동적 접촉 처리를 최대 2회 반복한다. 이는 `KinematicSolver`의 상수이며, Discrete 이동 단계의 설정값 16과 별개다. 한 회차에서 양쪽 모두 `TryCollide` 접촉을 찾지 못하면 종료한다. 별도 보정 경로 Cast, 막힘 기록, 실제 좌표 변경 여부를 확인하는 반복 종료 조건은 없다. 미세 침투는 `TryCollide`의 고정 허용 오차 `1e-5`로 제외하며, 그보다 커도 float 반올림으로 보정이 사라지면 반복 한도까지 같은 접촉이 남을 수 있다.
+
+## Instant와 Smooth 보정
+
+`ApplyInitialCorrection()`은 `OverlapResolutionMode`에 따라 보정 표시 방법을 선택한다. `Instant`는 `ApplyCorrection()`으로 계산 위치를 즉시 보정한다. `Smooth`는 `ApplySmoothCorrection()`으로 계산 위치를 즉시 보정하면서, 같은 보정의 반대 방향을 표시 오프셋에 누적한다.
+
+```csharp
+smoothCorrectionOffset -= correction;
+smoothCorrectionStartOffset = smoothCorrectionOffset;
+smoothCorrectionElapsed = 0f;
+isSmoothingCorrection = true;
+```
+
+매 `SyncTransform()`에서 `Time.deltaTime`으로 경과 시간을 늘리고, 0.1초 동안 이차 ease-out을 적용한다. 현재 `InverseSmoothCorrectionDuration = 1f / 0.1f`는 `10f`와 같으며, 진행률은 경과 시간에 이 값을 곱해 구한다.
+
+```csharp
+var t = Mathf.Clamp01(smoothCorrectionElapsed * InverseSmoothCorrectionDuration);
+var easeoutProgress = t * (2f - t);
+smoothCorrectionOffset = smoothCorrectionStartOffset * (1f - easeoutProgress);
+```
+
+최종 Transform 위치는 `anchorPosition + smoothCorrectionOffset`이다. 시작할 때 빠르게 따라잡고 끝으로 갈수록 감속한다. 새 Initial 보정이 들어오면 남은 오프셋에 합산하고 진행 시간을 다시 시작한다. `t >= 1`이면 `isSmoothingCorrection`을 끄고 오프셋을 0으로 만든다. 충돌·Cast는 보정이 끝난 `anchorPosition`을 즉시 사용하므로, 스무딩 중 표시 위치와 계산 위치는 다를 수 있다. Discrete 이동 후 MTV는 `ApplyCorrection()`을 직접 호출하며 이 스무딩을 추가하지 않는다.
+
+## Ghost 복구
+
+`SetGhost(false)`는 `NeedsGhostRecovery`를 켠다. 이동 솔버 실행 후 `CompleteGhostRecovery()`가 Ghost 통과 대상과의 actionable overlap을 검사한다. 남은 겹침이 없으면 복구 플래그를 끄고, 반복 한도로 겹침이 남았다면 다음 Solve에서도 복구 대상으로 유지한다. 이 단계는 추가 위치 보정을 수행하지 않는다. 충돌 제외와 통과 대상 여부는 `CanCollideWith()`와 `CanGhostThrough()`가 결정한다.
 
 ## 결과 반영과 조회 시점
 
-Solve가 진행되는 동안에는 계산 위치를 변경하며, 모든 동적 바디의 Transform은 마지막 동기화 단계에서 반영한다. 보정도 최종 위치에 포함된다.
+Solve가 진행되는 동안에는 계산 위치를 변경하며, 모든 동적 바디의 Transform은 마지막 동기화 단계에서 반영한다. Instant에서는 계산 위치를 그대로, Smooth 보정 중에는 표시 오프셋을 더해 반영한다.
 
 `KinematicSolver`가 동적 바디 Transform의 Position을 전적으로 소유하며 점유한다. 매 프레임 바디의 계산 위치를 Transform에 동기화하므로, 외부 로직은 `Transform.position`을 통해 직접 변경하지 않고 `Move()` 또는 `Teleport()`로 위치 변경을 요청해야 한다. 따라서 외부에서 직접 변경한 Transform 위치는 바디의 계산 위치에 반영되지 않으며, 해당 프레임 Solve의 동기화 단계에서 덮어씌워진다.
 

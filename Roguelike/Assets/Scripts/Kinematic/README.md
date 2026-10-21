@@ -73,13 +73,19 @@ Teleport 적용, 초기 겹침 해소, Transform 동기화는 `KinematicSolver`�
 
 ## 이동 우선순위
 
-동적 바디 생성 시 `MovePriority`를 지정한다. 순서는 `High > Medium > Low`이며, 같은 우선순위끼리는 기존 충돌 반응을 사용한다. 다른 우선순위끼리는 낮은 바디를 먼저 이동 또는 위치 보정한다. 낮은 바디가 벽이나 다른 높은 우선순위 바디에 막혀 더 이상 밀려날 수 없다면 높은 바디의 이동도 제한하여 겹침을 방지한다. 정적 바디와의 충돌은 우선순위와 관계없이 기존처럼 이동을 제한한다.
+동적 바디 생성 시 `MovePriority`를 지정한다. 순서는 `High > Medium > Low`이며, 같은 우선순위끼리는 각 이동 솔버의 기본 충돌 반응을 사용한다. 다른 우선순위끼리는 낮은 바디의 이동을 조정하거나 위치를 보정한다. 정적 바디는 움직이지 않는다. 연쇄 접촉의 결과는 이동 방식, 등록 순서와 반복 한도에 영향을 받으며, 모든 겹침의 해소를 보장하지 않는다.
 
-Sweep은 접촉 후 낮은 바디의 상대 이동에서 충돌 표면 안쪽 성분을 제거한다. 높은 바디가 정지한 낮은 바디를 향해 이동하면 낮은 바디도 같은 Solve에서 밀려난다. Discrete와 초기 겹침 해소는 낮은 바디에 MTV를 우선 적용하되, 벽이나 다른 높은 바디에 막혀 적용할 수 없는 분량은 현재 충돌 쌍의 높은 바디를 반대로 보정한다. Ghost와 레이어 설정으로 충돌이 제외된 쌍에는 우선순위를 적용하지 않는다.
+Sweep은 접촉 후 낮은 바디의 상대 이동에서 충돌 표면 안쪽 성분을 제거한다. 높은 바디가 정지한 낮은 바디를 향해 이동하면 낮은 바디도 같은 Solve에서 밀려난다. Discrete와 초기 겹침 해소는 우선순위가 다른 쌍에서 낮은 바디에 MTV 전체를 적용한다. 보정 경로를 Cast하거나 막힌 분량을 높은 바디에 나누는 처리는 없으며, 보정으로 생긴 다른 겹침은 이후 쌍 검사나 반복에서 처리한다. Ghost와 레이어 설정으로 충돌이 제외된 쌍에는 우선순위를 적용하지 않는다.
 
-이동 중 다른 바디에 밀린 바디는 해당 Solve 동안 밀림을 전달한 바디의 우선순위를 사용한다. 따라서 `High → Medium → Low`와 `High → Low → Medium` 모두 앞쪽 High의 이동으로 뒤쪽 바디들을 밀 수 있다. 바디 자체의 `MovePriority`는 바뀌지 않으며, 다음 Solve에는 원래 우선순위로 시작한다. 정지한 높은 바디에 부딪쳐 자신의 이동만 취소한 경우에는 우선순위를 전달받지 않는다. 초기 겹침 해소는 이동의 시작점을 정할 수 없으므로 원래 바디 우선순위로 처리한다.
+이동 중 다른 바디에 밀린 바디는 해당 이동 Solve 동안 밀림을 전달한 바디의 우선순위를 사용한다. 따라서 `High → Medium → Low`와 `High → Low → Medium`에서 밀림을 이어갈 수 있다. 바디 자체의 `MovePriority`는 바뀌지 않는다. 정지한 높은 바디에 부딪쳐 자신의 이동만 취소한 경우에는 우선순위를 전달받지 않는다. Discrete는 `Dot(sourceMoveDelta, correction) > 0`을 승계 조건으로 사용하므로 MTV 축이 이동과 직교하는 경우에는 승계되지 않을 수 있다.
 
-반복 제한은 유지한다. Sweep의 보정 한도를 소진한 낮은 바디와의 접촉도 계속 검사하며, 더 밀어낼 수 없는 방향의 높은 바디 이동을 제한한다. Discrete에서는 높은 바디가 실제로 접근한 이동을 되돌리는 범위로 보정을 제한하므로, 낮은 바디의 자체 이동이 정지한 높은 바디를 밀어내지는 않는다. Discrete는 기존처럼 요청 이동 후 위치에서 동적 접촉을 검사하므로 이동 경로 중간의 통과를 검출하지 않는다.
+우선순위 상태는 각 단계가 소유한다. Initial은 `KinematicSolver.initialPushPriorities`, Discrete는 `DiscreteBodyState`, Sweep은 `SweepBodyState`를 사용한다. 각 단계는 바디의 원래 우선순위로 시작한다. Initial에서는 접근 이동이 없어도 실제 MTV 보정이 있으면 우선순위를 전달하고, 정적 벽의 보정은 `int.MaxValue`로 전달한다. 이 상태는 Initial 종료 시 비우며 이동 솔버에는 전달하지 않는다. 공유 `KinematicCorrectionState`와 단계 사이의 `Reset`은 없다.
+
+Sweep의 바디별 슬라이드 한도는 1회이며, 높은 바디에 밀리는 이동은 횟수를 소비하지 않는다. Discrete의 이동 후 겹침 해소 한도는 `KinematicSettings.MaxSolverIterationCount`를 사용한다. Discrete는 요청 이동 후 위치에서 검사하므로 이동 경로 중간의 통과를 검출하지 않는다.
+
+## 초기 겹침의 표시 보정
+
+`OverlapResolutionMode.Instant`는 Initial의 위치 보정을 즉시 표시한다. `Smooth`는 계산용 `anchorPosition`을 즉시 보정하고, 표시용 Transform 오프셋만 0.1초 동안 이차 ease-out으로 줄인다. 충돌과 Cast는 이미 보정된 계산 위치를 사용한다. Discrete 이동 후 MTV에는 이 스무딩을 적용하지 않는다. 수식과 재보정 시 동작은 [실행 흐름](RuntimeFlow.md#instant와-smooth-보정)에 정리한다.
 
 ## Sweep과 Discrete의 동작 차이
 
@@ -98,7 +104,7 @@ Sweep의 차이는 이동 경로를 검사한다는 데 있다. 현재 지원 �
 
 | 폴더 | 내용과 의존 관계 |
 | --- | --- |
-| `Data` | `AABB`, `ColliderInfo`, `Contact` 등 공통 데이터 |
+| `Data` | `AABB`, `ColliderInfo`, `MovePriority`, `KinematicSettings` 등 공통 데이터와 설정 |
 | `Interface` | 조회·이동 솔버 계약. `Data` 참조 |
 | `Runtime` | 바디, 월드, 솔버, Cast, 공간 분할 구현. `Data`와 `Interface` 참조 |
 | `Test` | 테스트 입력으로 바디를 움직이는 컴포넌트 |
@@ -107,6 +113,6 @@ Sweep의 차이는 이동 경로를 검사한다는 데 있다. 현재 지원 �
 
 이 모듈은 요청된 변위와 겹침을 기하학적으로 처리한다. 질량, 마찰, 반발력, 힘과 관성을 계산하는 물리 솔버는 아니다. 동적 바디의 처리 순서와 반복 횟수 제한에 따라 결과가 달라질 수 있으며, 모든 겹침이 반드시 해소된다고 보장하지 않는다.
 
-현재 `Bootstrap`은 `useSweep: false`로 초기화하므로 기본 실행은 Discrete다. 모드 선택은 월드 초기화 시 이루어지며, 초기화된 월드의 솔버를 런타임에 바꾸는 API는 없다.
+`KinematicWorld.Init(bounds)`에서 `KinematicSettings.Load()`로 설정을 읽고, `CollisionDetection`에 따라 이동 솔버를 생성한다. 현재 저장된 `Resources/kinematic_settings.asset`은 Discrete, 이동 후 최대 16회 반복, Smooth 보정이다. 리소스가 없을 때의 기본값은 Discrete, 16회, Instant다. 초기화된 월드의 이동 솔버를 런타임에 바꾸는 API는 없다.
 
 등록과 Cast 사용 전에 월드 초기화가 필요하다. 바디 등록의 중복 방지, 정적 바디 이동 시 트리 갱신, 초기화 전 또는 반복 `Dispose()` 호출에 대한 보호는 현재 구현에 포함되어 있지 않다. 자세한 사용 조건은 [실행 흐름](RuntimeFlow.md)과 [QuadTree](QuadTree.md)에 정리한다.
