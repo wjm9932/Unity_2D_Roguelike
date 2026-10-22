@@ -2,7 +2,6 @@
 using System;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("GameLoop")]
-
 namespace Pawn.Runtime
 {
     internal static class PawnExtensions

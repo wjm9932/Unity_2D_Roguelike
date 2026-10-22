@@ -4,11 +4,11 @@ using UnityEngine;
 
 namespace Pawn.Runtime
 {
-    internal class PawnMover : IPawnMover
+    internal class PawnMoveProcessor : IPawnMoveProcessor
     {
         private const float PassiveThreshold = 2f;
 
-        private readonly PawnMotor bodyMover;
+        private readonly PawnMotor pawnMotor;
         private readonly IMoveRequestQueue requestQueue;
         private readonly AnimationCurve accelerationCurve;
         private readonly AnimationCurve passiveDecelerationCurve;
@@ -20,16 +20,16 @@ namespace Pawn.Runtime
         private float passiveElapsedTime;
         private bool isPassiveMoving;
 
-        internal PawnMover(PawnMotor body, IMoveRequestQueue queue, AnimationCurve accelCurve, AnimationCurve passiveCurve)
+        internal PawnMoveProcessor(PawnMotor motor, IMoveRequestQueue queue, AnimationCurve accelCurve, AnimationCurve passiveCurve)
         {
-            bodyMover = body;
+            pawnMotor = motor;
             requestQueue = queue;
             accelerationCurve = accelCurve;
             passiveDecelerationCurve = passiveCurve;
             PassiveMoveDuration = passiveCurve.length > 0 ? Mathf.Max(0f, passiveCurve[passiveCurve.length - 1].time) : 0f;
         }
 
-        void IPawnMover.OnMove(float dt)
+        void IPawnMoveProcessor.OnMove(float dt)
         {
             var hasActive = false;
             var requestedActiveVelocity = Vector2.zero;
@@ -65,7 +65,7 @@ namespace Pawn.Runtime
             // Teleport는 다른 이동 요청보다 우선한다.
             if (hasTeleport)
             {
-                bodyMover.Teleport(teleportPosition);
+                pawnMotor.Teleport(teleportPosition);
                 return;
             }
 
@@ -80,7 +80,7 @@ namespace Pawn.Runtime
             var activeVelocity = ResolveActiveVelocity(hasActive, requestedActiveVelocity, passiveVelocity, dt);
             var finalVelocity = activeVelocity + passiveVelocity;
 
-            bodyMover.Move(finalVelocity * dt);
+            pawnMotor.Move(finalVelocity * dt);
         }
 
         private void StartPassiveMovement(Vector2 velocity)

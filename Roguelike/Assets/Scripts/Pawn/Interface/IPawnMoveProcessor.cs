@@ -2,7 +2,7 @@ using System;
 
 namespace Pawn.Interface
 {
-    public interface IPawnMover
+    public interface IPawnMoveProcessor
     {
         void OnMove(float dt);
 
