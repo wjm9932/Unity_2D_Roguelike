@@ -1,5 +1,6 @@
 using EventSystem;
 using Pawn.Interface;
+using Pawn.Data;
 using Pawn.Runtime.State;
 using UnityEngine;
 

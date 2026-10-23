@@ -18,14 +18,17 @@ namespace Pawn.Runtime
 
             var avatar = Object.Instantiate(pawnDefinition.PawnAssetDefinition.Avatar, container.transform);
             avatar.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            
+            var assetDef = pawnDefinition.PawnAssetDefinition;
+            var statsDef = pawnDefinition.PawnStatsDefinition;
 
             var controller = new ManualPawnController();
-            var statsBehaviour = new PawnStatsBehaviour(pawnDefinition.PawnStatsDefinition);
-            var body = new KinematicBody(container.transform, pawnDefinition.PawnAssetDefinition.ColiderInfo, pawnDefinition.PawnAssetDefinition.MovePriority);
+            var statsBehaviour = new PawnStatsBehaviour(statsDef);
+            var body = new KinematicBody(container.transform,assetDef.ColiderInfo, assetDef.MovePriority);
             var (requestQueue, requestCollector) = MoveRequestQueue.Create();
-            var mover = new PawnMover(new PawnMotor(body), requestQueue, pawnDefinition.PawnStatsDefinition.AccelerationCurve);
-            var behaviour = new PawnBehaviour(pawnDefinition.PawnStatsDefinition, container.transform, requestCollector, new PawnBody(body));
-            var pawn = new Pawn(controller, statsBehaviour, behaviour, mover, body);
+            var moveProcessor = new PawnMoveProcessor(new PawnMotor(body), requestQueue, statsDef.ActiveAccelerationCurve, statsDef.PassiveDecelerationCurve);
+            var behaviour = new PawnBehaviour(statsDef, container.transform, requestCollector, new PawnBody(body));
+            var pawn = new Pawn(controller, statsBehaviour, behaviour, moveProcessor, body);
 
             // 이 어뎁터 구조는 고민 필요
             var adapter = container.AddComponent<PawnAdapter>();
