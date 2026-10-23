@@ -189,7 +189,7 @@ namespace Kinematic.Runtime
                     if (pushPriorityA != pushPriorityB)
                     {
                         // 우선순위가 낮은 바디를 먼저 보정한다.
-                        KinematicBodyExtension.GetPriorityCorrections(contact, pushPriorityA, pushPriorityB, out correctionA, out correctionB);
+                        KinematicCollision.GetPriorityCorrections(contact, pushPriorityA, pushPriorityB, out correctionA, out correctionB);
                     }
                     // 같은 우선순위에서 한쪽만 고스트를 종료했다면 기존처럼 종료한 바디만 보정한다.
                     else if (recoverBodyA != recoverBodyB)

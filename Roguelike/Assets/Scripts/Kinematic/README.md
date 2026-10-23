@@ -66,9 +66,10 @@ Teleport 적용, 초기 겹침 해소, Transform 동기화는 `KinematicSolver`�
 | `KinematicSolver` | Teleport, 초기 겹침 해소, 이동 솔버 실행, Transform 동기화 |
 | `KinematicSweepSolver` | 이동 경로의 충돌 시점 계산과 잔여 이동 조정.|
 | `KinematicDiscreteSolver` | 이동 후 겹침을 검사하고 MTV 보정 분담.|
-| `KinematicCast` | 정적·동적 후보를 조회하고 가장 가까운 Cast 결과 선택 또는 전체 결과 수집 |
-| `KinematicShapeCast` | 한 형상 쌍의 이동 경로와 최초 접촉 계산 |
-| `KinematicBodyExtension` | 한 형상 쌍의 현재 겹침과 분리 정보 계산 |
+| `KinematicCast` | 정적·동적 후보 조회, 가장 가까운 Cast 결과 선택 또는 전체 결과 수집 |
+| `KinematicShapeCast` | 한 형상 쌍의 이동 경로와 최초 접촉 계산. `KinematicCast.cs` 안에 함께 정의 |
+| `KinematicCollision` | 현재 겹침 판정, 접촉·MTV 계산, 우선순위에 따른 보정 벡터 계산 |
+| `KinematicBodyExtension` | Ghost·레이어에 따른 충돌 허용 여부 확인, 바디 간 `TryCollide` 호출을 형상 판정으로 연결 |
 | `QuadTree` | 정적 바디의 AABB 후보 조회 |
 
 ## 이동 우선순위

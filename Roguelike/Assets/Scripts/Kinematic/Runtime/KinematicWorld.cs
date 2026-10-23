@@ -15,7 +15,6 @@ namespace Kinematic.Runtime
             KinematicSimulation.Instance.Init(bounds);
         }
 
-
         public static void Register(KinematicBody body) => KinematicSimulation.Instance.Register(body);
 
         public static void Unregister(KinematicBody body) => KinematicSimulation.Instance.Unregister(body);

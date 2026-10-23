@@ -158,7 +158,7 @@ namespace Kinematic.Runtime
                     if (stateA.PushPriority != stateB.PushPriority)
                     {
                         // 낮은 우선순위 바디를 먼저 보정하고, 새로 발생한 겹침은 이후 Iteration에서 해결한다.
-                        KinematicBodyExtension.GetPriorityCorrections(contact, stateA.PushPriority, stateB.PushPriority, out var priorityCorrectionA, out var priorityCorrectionB);
+                        KinematicCollision.GetPriorityCorrections(contact, stateA.PushPriority, stateB.PushPriority, out var priorityCorrectionA, out var priorityCorrectionB);
 
                         bodyA.ApplyCorrection(priorityCorrectionA);
                         bodyB.ApplyCorrection(priorityCorrectionB);

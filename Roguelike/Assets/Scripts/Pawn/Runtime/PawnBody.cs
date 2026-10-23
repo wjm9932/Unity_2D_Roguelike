@@ -20,14 +20,17 @@ namespace Pawn.Runtime
             this.body = body;
         }
 
+
         public void SetGhost(bool isGhost) => body.SetGhost(isGhost);
 
-        public bool ShapeCast(Vector2 distance, out ShapeCastHit hit) => ShapeCast(distance, ~0, out hit);
+        public bool RayCast(Vector2 distance, int layerMask, out CastHit hit) => Kinematics.Raycast(body.Center, distance, body, layerMask, out hit);
 
-        public bool ShapeCast(Vector2 distance, int layerMask, out ShapeCastHit hit) => Kinematics.ShapeCast(body, distance, layerMask, out hit);
+        public bool ShapeCast(Vector2 distance, out CastHit hit) => ShapeCast(distance, ~0, out hit);
 
-        public int ShapeCastAll(Vector2 distance, List<ShapeCastHit> results) => ShapeCastAll(distance, ~0, results);
+        public bool ShapeCast(Vector2 distance, int layerMask, out CastHit hit) => Kinematics.ShapeCast(body, distance, layerMask, out hit);
 
-        public int ShapeCastAll(Vector2 distance, int layerMask, List<ShapeCastHit> results) => Kinematics.ShapeCastAll(body, distance, layerMask, results);
+        public int ShapeCastAll(Vector2 distance, List<CastHit> results) => ShapeCastAll(distance, ~0, results);
+
+        public int ShapeCastAll(Vector2 distance, int layerMask, List<CastHit> results) => Kinematics.ShapeCastAll(body, distance, layerMask, results);
     }
 }

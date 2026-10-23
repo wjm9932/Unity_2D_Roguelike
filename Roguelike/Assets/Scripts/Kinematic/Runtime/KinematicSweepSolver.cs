@@ -134,7 +134,7 @@ namespace Kinematic.Runtime
                 return;
             }
 
-            if (KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
+            if (KinematicCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
             {
                 return;
             }

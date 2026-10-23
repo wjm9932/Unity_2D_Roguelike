@@ -109,8 +109,7 @@ $$
 
 ## 관련 코드
 
-- [형상별 접촉 판정](Runtime/KinematicBodyExtension.cs)
-- [Contact](Runtime/KinematicBodyExtension.cs)
+- [형상별 접촉 판정과 Contact](Runtime/KinematicCollision.cs)
 - [ColliderInfo](Data/ColliderInfo.cs)
 - [초기 보정](Runtime/KinematicSolver.cs)
 - [이동 후 보정](Runtime/KinematicDiscreteSolver.cs)

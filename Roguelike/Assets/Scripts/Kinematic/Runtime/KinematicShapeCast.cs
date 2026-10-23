@@ -1,9 +1,201 @@
-﻿using Kinematic.Data;
+using Kinematic.Data;
+using Kinematic.Interface;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Kinematic.Runtime
 {
-    internal static class KinematicShapeCast
+    public readonly struct CastHit
+    {
+        public KinematicBody Body { get; }
+        public Vector2 Point { get; }
+        public Vector2 Normal { get; }
+        public float Distance { get; }
+        internal float Fraction { get; }
+        internal bool IsGrazing { get; }
+
+        internal CastHit(KinematicBody body, Vector2 point, Vector2 normal, float distance, float fraction, bool isGrazing)
+        {
+            Body = body;
+            Point = point;
+            Normal = normal;
+            Distance = distance;
+            Fraction = fraction;
+            IsGrazing = isGrazing;
+        }
+    }
+
+    internal sealed class KinematicShapeCast
+    {
+        // 정적 바디 조회용 쿼드 트리
+        private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
+        // 동적 바디 조회용 읽기 전용 리스트
+        private readonly IReadOnlyList<KinematicBody> dynamicBodies;
+        // 쿼리 결과용 버퍼
+        private readonly List<KinematicBody> queryResult = new();
+
+        internal KinematicShapeCast(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
+        {
+            staticBodies = statics;
+            dynamicBodies = dynamics;
+        }
+
+        internal bool CircleCast(Vector2 origin, float radius, Vector2 distance, KinematicBody ignoredBody, int layerMask, out CastHit hit)
+        {
+            Debug.Assert(radius >= 0f, $"CircleCast radius must be non-negative: {radius}");
+
+            if (radius < 0f)
+            {
+                hit = default;
+                return false;
+            }
+
+            var shape = ColliderInfo.CreateCircle(Vector2.zero, radius);
+            return ShapeCastCore(origin, shape, distance, ignoredBody, layerMask, out hit);
+        }
+
+        internal bool BoxCast(Vector2 origin, Vector2 halfExtents, Vector2 distance, KinematicBody ignoredBody, int layerMask, out CastHit hit)
+        {
+            Debug.Assert(halfExtents.x >= 0f && halfExtents.y >= 0f, $"BoxCast half extents must be non-negative: {halfExtents}");
+
+            if (halfExtents.x < 0f || halfExtents.y < 0f)
+            {
+                hit = default;
+                return false;
+            }
+
+            var shape = ColliderInfo.CreateBox(Vector2.zero, halfExtents);
+            return ShapeCastCore(origin, shape, distance, ignoredBody, layerMask, out hit);
+        }
+
+        internal bool ShapeCast(KinematicBody body, Vector2 distance, int layerMask, out CastHit hit) => ShapeCastCore(body.Center, body.Shape, distance, body, layerMask, out hit);
+
+        internal int CircleCastAll(Vector2 origin, float radius, Vector2 distance, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
+        {
+            Debug.Assert(radius >= 0f, $"CircleCastAll radius must be non-negative: {radius}");
+
+            if (radius < 0f)
+            {
+                results.Clear();
+
+                return 0;
+            }
+
+            var shape = ColliderInfo.CreateCircle(Vector2.zero, radius);
+
+            return ShapeCastAllCore(origin, shape, distance, ignoredBody, layerMask, results);
+        }
+
+        internal int BoxCastAll(Vector2 origin, Vector2 halfExtents, Vector2 distance, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
+        {
+            Debug.Assert(halfExtents.x >= 0f && halfExtents.y >= 0f, $"BoxCastAll half extents must be non-negative: {halfExtents}");
+
+            if (halfExtents.x < 0f || halfExtents.y < 0f)
+            {
+                results.Clear();
+
+                return 0;
+            }
+
+            var shape = ColliderInfo.CreateBox(Vector2.zero, halfExtents);
+
+            return ShapeCastAllCore(origin, shape, distance, ignoredBody, layerMask, results);
+        }
+
+        internal int ShapeCastAll(KinematicBody body, Vector2 distance, int layerMask, List<CastHit> results)
+            => ShapeCastAllCore(body.Center, body.Shape, distance, body, layerMask, results);
+
+        private bool ShapeCastCore(Vector2 origin, in ColliderInfo shape, Vector2 distance, KinematicBody ignoredBody, int layerMask, out CastHit hit)
+        {
+            hit = default;
+
+            if (QueryCandidates(origin, shape, distance) == false)
+            {
+                return false;
+            }
+
+            var hasHit = false;
+            var closestFraction = float.PositiveInfinity;
+
+            foreach (var candidate in queryResult)
+            {
+                if (TryCastCandidate(origin, shape, distance, ignoredBody, candidate, layerMask, out var candidateHit) == false || candidateHit.Fraction >= closestFraction)
+                {
+                    continue;
+                }
+
+                closestFraction = candidateHit.Fraction;
+                hit = candidateHit;
+                hasHit = true;
+            }
+
+            return hasHit;
+        }
+
+        private int ShapeCastAllCore(Vector2 origin, in ColliderInfo shape, Vector2 distance, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
+        {
+            // 이전 조회 결과를 비우고 이번 경로의 바디별 첫 접촉을 수집한다.
+            results.Clear();
+
+            if (QueryCandidates(origin, shape, distance) == false)
+            {
+                return 0;
+            }
+
+            foreach (var candidate in queryResult)
+            {
+                if (TryCastCandidate(origin, shape, distance, ignoredBody, candidate, layerMask, out var candidateHit))
+                {
+                    results.Add(candidateHit);
+                }
+            }
+
+            return results.Count;
+        }
+
+        private bool QueryCandidates(Vector2 origin, in ColliderInfo shape, Vector2 distance)
+        {
+            if (staticBodies == null || distance.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return false;
+            }
+
+            var extents = shape.Shape switch
+            {
+                Shape.Circle => Vector2.one * shape.Radius,
+                Shape.Box => shape.HalfExtents,
+                _ => Vector2.zero
+            };
+            // 쿼드 트리 조회용 이동경로 AABB
+            var sweptBounds = AABB.Create(origin, extents).GetSweptBounds(distance);
+
+            staticBodies.Query(sweptBounds, queryResult);
+
+            foreach (var candidate in dynamicBodies)
+            {
+                if (candidate.Bounds.Overlaps(sweptBounds))
+                {
+                    queryResult.Add(candidate);
+                }
+            }
+
+            return queryResult.Count > 0;
+        }
+
+        private static bool TryCastCandidate(Vector2 origin, in ColliderInfo shape, Vector2 moveDelta, KinematicBody ignoredBody, KinematicBody candidate, int layerMask, out CastHit hit)
+        {
+            hit = default;
+
+            if (ReferenceEquals(candidate, ignoredBody) || (layerMask & (1 << candidate.Layer)) == 0)
+            {
+                return false;
+            }
+
+            return KinematicCast.TryCast(origin, shape, candidate, moveDelta, out hit);
+        }
+    }
+
+    internal static class KinematicCast
     {
         private readonly struct CastResult
         {
@@ -21,7 +213,7 @@ namespace Kinematic.Runtime
 
         private const float Epsilon = 0.000001f;
 
-        internal static bool TryCast(Vector2 movingCenter, in ColliderInfo movingShape, KinematicBody targetBody, Vector2 moveDelta, out ShapeCastHit hit)
+        internal static bool TryCast(Vector2 center, in ColliderInfo shape, KinematicBody targetBody, Vector2 moveDelta, out CastHit hit)
         {
             hit = default;
 
@@ -31,28 +223,28 @@ namespace Kinematic.Runtime
             }
 
             // Cast 하기 전 이미 겹쳐있다면 겹쳐있는 물체 반환
-            if (KinematicBodyExtension.TryGetContact(movingCenter, movingShape, targetBody.Center, targetBody.Shape, out var contact))
+            if (KinematicCollision.TryGetContact(center, shape, targetBody.Center, targetBody.Shape, out var contact))
             {
-                hit = CreateHit(movingCenter, movingShape, targetBody, moveDelta, 0f, contact.SeparationNormal);
+                hit = CreateHit(center, shape, targetBody, moveDelta, 0f, contact.SeparationNormal);
 
                 return true;
             }
 
             CastResult castResult = default;
 
-            var hasHit = (movingShape.Shape, targetBody.Shape.Shape) switch
+            var hasHit = (shape.Shape, targetBody.Shape.Shape) switch
             {
                 (Shape.Circle, Shape.Circle) =>
-                    TryCircleCircle(movingCenter, movingShape.Radius, targetBody, moveDelta, out castResult),
+                    TryCircleCircle(center, shape.Radius, targetBody, moveDelta, out castResult),
 
                 (Shape.Circle, Shape.Box) =>
-                    TryCircleBox(movingCenter, movingShape.Radius, targetBody, moveDelta, out castResult),
+                    TryCircleBox(center, shape.Radius, targetBody, moveDelta, out castResult),
 
                 (Shape.Box, Shape.Circle) =>
-                    TryBoxCircle(movingCenter, movingShape.HalfExtents, targetBody, moveDelta, out castResult),
+                    TryBoxCircle(center, shape.HalfExtents, targetBody, moveDelta, out castResult),
 
                 (Shape.Box, Shape.Box) =>
-                    TryBoxBox(movingCenter, movingShape.HalfExtents, targetBody, moveDelta, out castResult),
+                    TryBoxBox(center, shape.HalfExtents, targetBody, moveDelta, out castResult),
 
                 _ => false
             };
@@ -62,18 +254,18 @@ namespace Kinematic.Runtime
                 return false;
             }
 
-            hit = CreateHit(movingCenter, movingShape, targetBody, moveDelta, castResult.Fraction, castResult.Normal, castResult.IsGrazing);
+            hit = CreateHit(center, shape, targetBody, moveDelta, castResult.Fraction, castResult.Normal, castResult.IsGrazing);
 
             return true;
         }
 
-        private static ShapeCastHit CreateHit(Vector2 movingCenter, in ColliderInfo movingShape, KinematicBody targetBody, Vector2 moveDelta, float fraction, Vector2 normal, bool isGrazing = false)
+        private static CastHit CreateHit(Vector2 movingCenter, in ColliderInfo movingShape, KinematicBody targetBody, Vector2 moveDelta, float fraction, Vector2 normal, bool isGrazing = false)
         {
             var centerAtHit = movingCenter + moveDelta * fraction;
             var point = GetContactPoint(centerAtHit, movingShape, targetBody, normal);
             var distance = moveDelta.magnitude * fraction;
 
-            return new ShapeCastHit(targetBody, point, normal, distance, fraction, isGrazing);
+            return new CastHit(targetBody, point, normal, distance, fraction, isGrazing);
         }
 
         private static Vector2 GetContactPoint(Vector2 movingCenter, in ColliderInfo movingShape, KinematicBody targetBody, Vector2 normal)

@@ -143,5 +143,5 @@ $$
 ## 관련 코드
 
 - [Sweep 솔버](Runtime/KinematicSweepSolver.cs)
-- [형상별 경로 검사](Runtime/KinematicShapeCast.cs)
+- [형상별 경로 검사](Runtime/KinematicCast.cs)
 - [공통 초기 처리](Runtime/KinematicSolver.cs)

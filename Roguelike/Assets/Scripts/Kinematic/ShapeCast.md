@@ -13,13 +13,16 @@ Cast는 형상을 지정한 변위만큼 이동시켰을 때 처음 접촉하는
 
 | 계층 | 책임 |
 | --- | --- |
-| `Kinematics` | 게임 로직에 `CircleCast`, `BoxCast`, `ShapeCast`와 각 `CastAll` 제공 |
+| `Kinematics` | 게임 로직에 `Raycast`, `CircleCast`, `BoxCast`, `ShapeCast`와 각 `CastAll` 제공 |
 | `KinematicCast` | 후보 조회와 가장 가까운 결과 선택 또는 전체 결과 수집 |
-| `KinematicShapeCast` | 한 형상 쌍의 이동 경로 교차 계산 |
+| `KinematicShapeCast` | 한 형상 쌍의 이동 경로 교차 계산. `KinematicCast.cs` 안에 함께 정의 |
+| `KinematicCollision` | Cast 시작 위치의 원시 겹침과 접촉 정보 계산 |
 
 공개 Cast는 정적 바디와 동적 바디를 모두 검사한다. 조회 시점의 대상 위치를 고정하여 검사하며, 대상의 아직 적용되지 않은 이동 요청은 고려하지 않는다. 동적 쌍의 상대 이동은 [Sweep 솔버](Sweep.md)가 별도로 구성한다.
 
 ## 후보 조회와 최초 결과 선택
+
+`Raycast(origin, moveDelta, ...)`는 반지름 `0`인 `CircleCast`를 사용하여 점의 이동 경로를 검사한다. `moveDelta`는 방향과 검사 길이를 함께 가진 변위이며, 검사 구간은 `origin`에서 `origin + moveDelta`까지다. `ignoredBody`와 `layerMask`를 지정할 수 있고 결과는 `ShapeCastHit`으로 반환한다.
 
 | 순서 | 처리 |
 | --- | --- |
@@ -182,6 +185,6 @@ core half extents가 `(hx, hy)`라면 모서리 중심은 `(±hx, ±hy)`다. 각
 ## 관련 코드
 
 - [공개 조회 API](Runtime/Kinematics.cs)
-- [후보 조회와 결과 선택](Runtime/KinematicCast.cs)
-- [형상별 Cast](Runtime/KinematicShapeCast.cs)
-- [Cast 결과](Runtime/ShapeCastHit.cs)
+- [후보 조회·결과 선택과 형상별 Cast](Runtime/KinematicCast.cs)
+- [시작 겹침 판정](Runtime/KinematicCollision.cs)
+- [Cast 결과](Runtime/KinematicCast.cs)
