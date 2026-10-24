@@ -10,7 +10,10 @@ namespace Kinematic.Runtime
 
         public static void Init(in AABB bounds)
         {
-            Settings = KinematicSettings.Load();
+            if (Settings == null) 
+            {
+                Settings = KinematicSettings.Load();
+            }
 
             KinematicSimulation.Instance.Init(bounds);
         }

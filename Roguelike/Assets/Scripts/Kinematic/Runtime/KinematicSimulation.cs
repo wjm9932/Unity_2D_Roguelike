@@ -7,10 +7,11 @@ namespace Kinematic.Runtime
     internal sealed class KinematicSimulation
     {
         internal static KinematicSimulation Instance { get; } = new();
+        internal KinematicShapeCast Cast { get; private set; }
+
         private QuadTree staticBodies;
         private List<KinematicBody> dynamicBodies;
         private KinematicSolver solver;
-        internal KinematicShapeCast Cast { get; private set; }
         private bool isInit = false;
 
         internal void Init(in AABB bounds)
