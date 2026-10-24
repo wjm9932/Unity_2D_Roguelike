@@ -116,8 +116,6 @@ namespace Kinematic.Runtime
 
         public void Teleport(Vector2 position)
         {
-            Debug.Assert(IsStatic == false, $"Request Teleport to static body: {target.name}");
-
             // 텔레포트 이동도 solve 시점과 통일하기 위해서 즉시 적용하지 않는다.
             // Teleport와 Cast의 호출 순서가 조회 결과에 영향을 주지 않도록 Solve 시점에 일반 이동과 함께 일괄 적용한다.
             pendingTeleportPosition = position;
@@ -125,8 +123,6 @@ namespace Kinematic.Runtime
 
         public void Move(Vector2 moveDelta)
         {
-            Debug.Assert(IsStatic == false, $"Request Move to static body: {target.name}");
-
             pendingMoveDelta += moveDelta;
         }
 
