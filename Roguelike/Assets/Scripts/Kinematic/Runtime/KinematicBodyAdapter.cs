@@ -7,6 +7,7 @@ namespace Kinematic.Runtime
     public class KinematicBodyAdapter : MonoBehaviour
     {
         [SerializeField] private bool isStatic = true;
+        [SerializeField] private bool isTrigger;
         [SerializeField] private ColliderInfo colliderInfo;
 
         private KinematicBody body;
@@ -15,7 +16,7 @@ namespace Kinematic.Runtime
         {
             if (body != null) return;
 
-            body = isStatic ? new KinematicBody(transform, colliderInfo) : new KinematicBody(transform, colliderInfo, MovePriority.Medium);
+            body = isStatic ? new KinematicBody(transform, colliderInfo, isTrigger) : new KinematicBody(transform, colliderInfo, MovePriority.Medium, isTrigger);
         }
 
         // 이벤트로 Register해야할듯

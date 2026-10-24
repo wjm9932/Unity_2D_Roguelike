@@ -24,7 +24,7 @@ namespace Pawn.Runtime
 
             var controller = new ManualPawnController();
             var statsBehaviour = new PawnStatsBehaviour(statsDef);
-            var body = new KinematicBody(container.transform,assetDef.ColiderInfo, assetDef.MovePriority);
+            var body = new KinematicBody(container.transform,assetDef.ColiderInfo, assetDef.MovePriority, assetDef.IsTrigger);
             var (requestQueue, requestCollector) = MoveRequestQueue.Create();
             var moveProcessor = new PawnMoveProcessor(new PawnMotor(body), requestQueue, statsDef.ActiveAccelerationCurve, statsDef.PassiveDecelerationCurve);
             var behaviour = new PawnBehaviour(statsDef, container.transform, requestCollector, new PawnBody(body));

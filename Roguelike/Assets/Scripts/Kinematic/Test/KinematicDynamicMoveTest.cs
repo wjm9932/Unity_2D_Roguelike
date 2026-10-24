@@ -28,7 +28,7 @@ namespace Kinematic.Runtime
 
         private void OnEnable()
         {
-            body = new KinematicBody(transform, colliderInfo, priority);
+            body = new KinematicBody(transform, colliderInfo, priority, false);
             KinematicWorld.Register(body);
             dashSubscription = InputManager.Instance.PawnControls.Dash.Subscribe(value =>
             {

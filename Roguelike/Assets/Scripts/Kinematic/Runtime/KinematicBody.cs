@@ -1,4 +1,4 @@
-﻿using Kinematic.Data;
+using Kinematic.Data;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -66,15 +66,16 @@ namespace Kinematic.Runtime
         }
         internal MovePriority Priority { get; }
         internal bool IsStatic { get; }
-        internal bool IsGhost { get; private set; }
+        internal bool IsTrigger { get; private set; }
         internal bool NeedsGhostRecovery { get; set; }
 
-        public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority)
+        public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority, bool isTrigger)
         {
             target = transform;
             anchorPosition = transform.position;
             Shape = shape;
             Priority = movePriority;
+            IsTrigger = isTrigger;
             IsStatic = false;
 
 #if UNITY_EDITOR
@@ -82,11 +83,12 @@ namespace Kinematic.Runtime
 #endif
         }
 
-        public KinematicBody(Transform transform, ColliderInfo shape)
+        public KinematicBody(Transform transform, ColliderInfo shape, bool isTrigger)
         {
             target = transform;
             anchorPosition = transform.position;
             Shape = shape;
+            IsTrigger = isTrigger;
             IsStatic = true;
 
 #if UNITY_EDITOR
@@ -96,11 +98,11 @@ namespace Kinematic.Runtime
 
         public void SetGhost(bool isGhost)
         {
-            if (IsGhost == isGhost) return;
+            if (IsTrigger == isGhost) return;
 
             // 고스트가 끝나면 종료한 바디만 기존 Pawn 겹침을 해소한다.
             NeedsGhostRecovery = isGhost == false;
-            IsGhost = isGhost;
+            IsTrigger = isGhost;
         }
 
         public void Teleport(Vector2 position)
