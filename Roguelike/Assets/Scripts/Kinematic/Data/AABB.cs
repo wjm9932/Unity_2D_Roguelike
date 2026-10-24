@@ -9,7 +9,10 @@ namespace Kinematic.Data
 
         public AABB(Vector2 min, Vector2 max)
         {
-            Debug.Assert(min.x <= max.x && min.y <= max.y, $"Invalid AABB range: Min {min}, Max {max}");
+            if ((min.x <= max.x && min.y <= max.y) == false)
+            {
+                Debug.Assert(false, $"Invalid AABB range: Min {min}, Max {max}");
+            }
 
             Min = min;
             Max = max;
@@ -17,7 +20,10 @@ namespace Kinematic.Data
 
         public static AABB Create(Vector2 center, Vector2 extents)
         {
-            Debug.Assert(extents.x >= 0f && extents.y >= 0f, $"AABB extents must be non-negative: {extents}");
+            if ((extents.x >= 0f && extents.y >= 0f) == false)
+            {
+                Debug.Assert(false, $"AABB extents must be non-negative: {extents}");
+            }
 
             return new AABB(center - extents, center + extents);
         }
