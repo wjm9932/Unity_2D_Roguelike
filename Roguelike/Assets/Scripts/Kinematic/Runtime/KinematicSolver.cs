@@ -11,8 +11,8 @@ namespace Kinematic.Runtime
         private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         private readonly IKinematicMovementSolver movementSolver;
-        // Initial에서 전달받은 우선순위는 Initial 내부에서만 사용한다.
-        private readonly List<int> initialPushPriorities = new();
+        // Initial과 Ghost 복구는 각각 원래 우선순위에서 시작하며, 보정 중 전달된 값은 해당 단계에서만 사용한다.
+        private readonly List<int> overlapPushPriorities = new();
         private CollisionDetection CollisionDetection => KinematicWorld.Settings.CollisionDetection;
         private OverlapResolutionMode OverlapResolutionMode => KinematicWorld.Settings.OverlapResolutionMode;
 
@@ -27,16 +27,19 @@ namespace Kinematic.Runtime
 
         internal void Solve()
         {
-            // Teleport 요청이 있다면 Teleport 적용
+            // Teleport 요청이 있다면 Teleport부터 적용한다.
             HandleTeleport();
 
             // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
-            SolveInitialCollisions();
+            SolveOverlapCollisions();
 
+            // 이동 요청을 적용하며 충돌을 해소한다.
             movementSolver.Solve();
 
+            // 
             CompleteGhostRecovery();
-
+            
+            // 다이나믹 바디들의 트랜스폼을 이동 및 충돌이 해소된 위치로 동기화한다.
             SyncDynamicTransforms();
         }
 
@@ -48,17 +51,17 @@ namespace Kinematic.Runtime
             }
         }
 
-        private void SolveInitialCollisions()
+        private void SolveOverlapCollisions()
         {
             foreach (var body in dynamicBodies)
             {
-                initialPushPriorities.Add((int)body.Priority);
+                overlapPushPriorities.Add((int)body.Priority);
             }
 
             for (var iteration = 0; iteration < MaxSolverIterationCount; iteration++)
             {
-                var hasDynamicStaticCollision = SolveInitialDynamicStaticCollisions();
-                var hasDynamicDynamicCollision = SolveInitialDynamicDynamicCollisions();
+                var hasDynamicStaticCollision = SolveDynamicStaticOverlaps();
+                var hasDynamicDynamicCollision = SolveDynamicDynamicOverlaps();
 
                 if (hasDynamicStaticCollision == false && hasDynamicDynamicCollision == false)
                 {
@@ -66,11 +69,13 @@ namespace Kinematic.Runtime
                 }
             }
 
-            initialPushPriorities.Clear();
+            overlapPushPriorities.Clear();
         }
 
         private void CompleteGhostRecovery()
         {
+            var hasRecovery = false;
+
             foreach (var body in dynamicBodies)
             {
                 if (body.NeedsGhostRecovery == false)
@@ -78,57 +83,28 @@ namespace Kinematic.Runtime
                     continue;
                 }
 
-                var hasOverlap = false;
+                // 모든 종료 요청을 먼저 적용한 뒤 이동 후 겹침을 보정한다.
+                body.ApplyGhostEnd();
 
-                staticBodies.Query(body.Bounds, queryResult);
+                hasRecovery = true;
+            }
 
-                foreach (var other in queryResult)
-                {
-                    if (body.CanGhostThrough(other) == false || body.CanCollideWith(other) == false)
-                    {
-                        continue;
-                    }
+            if (hasRecovery == false)
+            {
+                return;
+            }
 
-                    if (body.TryCollide(other, out _))
-                    {
-                        hasOverlap = true;
-                        break;
-                    }
-                }
+            SolveOverlapCollisions();
 
-                foreach (var other in dynamicBodies)
-                {
-                    if (hasOverlap)
-                    {
-                        break;
-                    }
-
-                    if (body == other || body.CanGhostThrough(other) == false)
-                    {
-                        continue;
-                    }
-
-                    if (body.CanCollideWith(other) == false)
-                    {
-                        continue;
-                    }
-
-                    if (body.TryCollide(other, out _))
-                    {
-                        hasOverlap = true;
-                        break;
-                    }
-                }
-
-                // 반복 한도에 걸려 겹침이 남으면 다음 프레임에도 종료한 바디만 보정한다.
-                if (hasOverlap == false)
-                {
-                    body.NeedsGhostRecovery = false;
-                }
+            // Ghost 종료 바디를 우선 보정하는 규칙은 이번 프레임에만 적용한다.
+            // 다음 프레임부터는 일반 보정으로 전환해, 종료한 바디만 반복해서 밀리며 끼이는 현상을 방지한다.
+            foreach (var body in dynamicBodies)
+            {
+                body.NeedsGhostRecovery = false;
             }
         }
 
-        private bool SolveInitialDynamicStaticCollisions()
+        private bool SolveDynamicStaticOverlaps()
         {
             var hasCollision = false;
 
@@ -144,8 +120,8 @@ namespace Kinematic.Runtime
                         continue;
                     }
 
-                    ApplyInitialCorrection(dynamicBody, contact.SeparationMtv);
-                    InheritInitialPushPriority(bodyIndex, int.MaxValue, contact.SeparationMtv);
+                    ApplyOverlapCorrection(dynamicBody, contact.SeparationMtv);
+                    InheritOverlapPushPriority(bodyIndex, int.MaxValue, contact.SeparationMtv);
                     hasCollision = true;
                 }
             }
@@ -153,7 +129,7 @@ namespace Kinematic.Runtime
             return hasCollision;
         }
 
-        private bool SolveInitialDynamicDynamicCollisions()
+        private bool SolveDynamicDynamicOverlaps()
         {
             var hasCollision = false;
 
@@ -183,8 +159,8 @@ namespace Kinematic.Runtime
                     var correctionA = Vector2.zero;
                     var correctionB = Vector2.zero;
 
-                    var pushPriorityA = initialPushPriorities[bodyAIndex];
-                    var pushPriorityB = initialPushPriorities[bodyBIndex];
+                    var pushPriorityA = overlapPushPriorities[bodyAIndex];
+                    var pushPriorityB = overlapPushPriorities[bodyBIndex];
 
                     if (pushPriorityA != pushPriorityB)
                     {
@@ -204,27 +180,27 @@ namespace Kinematic.Runtime
                         correctionB = -contact.SeparationMtv * 0.5f;
                     }
 
-                    ApplyInitialCorrection(bodyA, correctionA);
-                    ApplyInitialCorrection(bodyB, correctionB);
+                    ApplyOverlapCorrection(bodyA, correctionA);
+                    ApplyOverlapCorrection(bodyB, correctionB);
 
-                    InheritInitialPushPriority(bodyAIndex, pushPriorityB, correctionA);
-                    InheritInitialPushPriority(bodyBIndex, initialPushPriorities[bodyAIndex], correctionB);
+                    InheritOverlapPushPriority(bodyAIndex, pushPriorityB, correctionA);
+                    InheritOverlapPushPriority(bodyBIndex, overlapPushPriorities[bodyAIndex], correctionB);
                 }
             }
 
             return hasCollision;
         }
 
-        private void InheritInitialPushPriority(int bodyIndex, int sourcePriority, Vector2 correction)
+        private void InheritOverlapPushPriority(int bodyIndex, int sourcePriority, Vector2 correction)
         {
-            // Initial에서는 접근 이동량이 없어도 실제 보정이 발생하면 우선순위를 전달한다.
-            if (sourcePriority > initialPushPriorities[bodyIndex] && correction.sqrMagnitude > 0f)
+            // 겹침 보정에서는 접근 이동량이 없어도 실제 보정이 발생하면 우선순위를 전달한다.
+            if (sourcePriority > overlapPushPriorities[bodyIndex] && correction.sqrMagnitude > 0f)
             {
-                initialPushPriorities[bodyIndex] = sourcePriority;
+                overlapPushPriorities[bodyIndex] = sourcePriority;
             }
         }
 
-        private void ApplyInitialCorrection(KinematicBody body, Vector2 correction)
+        private void ApplyOverlapCorrection(KinematicBody body, Vector2 correction)
         {
             if (OverlapResolutionMode == OverlapResolutionMode.Smooth)
             {
@@ -246,7 +222,7 @@ namespace Kinematic.Runtime
 
         internal void Dispose()
         {
-            initialPushPriorities.Clear();
+            overlapPushPriorities.Clear();
             movementSolver.Dispose();
         }
     }

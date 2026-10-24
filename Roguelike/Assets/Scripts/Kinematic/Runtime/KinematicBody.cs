@@ -1,4 +1,4 @@
-using Kinematic.Data;
+﻿using Kinematic.Data;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -98,12 +98,21 @@ namespace Kinematic.Runtime
 
         public void SetGhost(bool isGhost)
         {
-            if (IsTrigger == isGhost) return;
+            if (isGhost)
+            {
+                IsTrigger = true;
+                NeedsGhostRecovery = false;
+                return;
+            }
 
-            // 고스트가 끝나면 종료한 바디만 기존 Pawn 겹침을 해소한다.
-            NeedsGhostRecovery = isGhost == false;
-            IsTrigger = isGhost;
+            // 종료를 요청해도 이번 Solve의 이동까지는 Ghost를 유지한다.
+            if (IsTrigger)
+            {
+                NeedsGhostRecovery = true;
+            }
         }
+
+        internal void ApplyGhostEnd() => IsTrigger = false;
 
         public void Teleport(Vector2 position)
         {
