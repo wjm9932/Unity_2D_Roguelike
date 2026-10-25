@@ -1,5 +1,6 @@
 using Kinematic.Data;
 using Kinematic.Interface;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -17,6 +18,9 @@ namespace Kinematic.Runtime
         private readonly IReadOnlyList<KinematicBody> dynamicBodies;
         // Solver
         private readonly IKinematicMovementSolver movementSolver;
+        private readonly Action<KinematicBody, KinematicBody> onTriggerContact;
+        private HashSet<(KinematicBody Body, KinematicBody Other)> previousTriggers = new();
+        private HashSet<(KinematicBody Body, KinematicBody Other)> currentTriggers = new();
         // 충돌 모드
         private CollisionDetection CollisionDetection => KinematicWorld.Settings.CollisionDetection;
         // Overlap 해소 모드
@@ -28,6 +32,7 @@ namespace Kinematic.Runtime
         {
             staticBodies = statics;
             dynamicBodies = dynamics;
+            onTriggerContact = RecordTriggerContact;
             movementSolver = CollisionDetection == CollisionDetection.Sweep ? new KinematicSweepSolver(statics, dynamics) : new KinematicDiscreteSolver(statics, dynamics);
         }
 
@@ -36,6 +41,7 @@ namespace Kinematic.Runtime
             // Teleport 요청이 있다면 Teleport부터 적용한다.
             HandleTeleport();
 
+            // 트리거는 이 단계의 실제 겹침만 기록한다. 이동 경로에서 통과한 대상은 포함하지 않는다.
             // Teleport로 인한 겹침과 Solving 전부터 겹친 상태를 Solving 전에 일괄 해소한다.
             SolveOverlapCollisions();
 
@@ -44,6 +50,49 @@ namespace Kinematic.Runtime
             
             // 다이나믹 바디들의 트랜스폼을 이동 및 충돌이 해소된 위치로 동기화한다.
             SyncDynamicTransforms();
+
+            // 트리거 이벤트 발행
+            NotifyTriggerEvents();
+        }
+
+        private void RecordTriggerContact(KinematicBody body, KinematicBody other)
+        {
+            currentTriggers.Add((body, other));
+        }
+
+        private void NotifyTriggerEvents()
+        {
+            // 이번 접촉에는 Enter/Stay, 이전에만 있던 접촉에는 Exit를 전달한다.
+            foreach (var pair in currentTriggers)
+            {
+                if (previousTriggers.Contains(pair))
+                {
+                    pair.Body.NotifyTriggerStay(pair.Other);
+                    pair.Other.NotifyTriggerStay(pair.Body);
+                }
+                else
+                {
+                    pair.Body.NotifyTriggerEnter(pair.Other);
+                    pair.Other.NotifyTriggerEnter(pair.Body);
+                }
+            }
+
+            foreach (var pair in previousTriggers)
+            {
+                if (currentTriggers.Contains(pair))
+                {
+                    continue;
+                }
+
+                pair.Body.NotifyTriggerExit(pair.Other);
+                pair.Other.NotifyTriggerExit(pair.Body);
+            }
+
+            var reusable = previousTriggers;
+            reusable.Clear();
+            
+            previousTriggers = currentTriggers;
+            currentTriggers = reusable;
         }
 
         private void HandleTeleport()
@@ -91,7 +140,7 @@ namespace Kinematic.Runtime
 
                 foreach (var staticBody in queryResult)
                 {
-                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.TryCollide(staticBody, out var contact) == false)
+                    if (dynamicBody.TryGetSolvingContact(staticBody, onTriggerContact, out var contact) == false)
                     {
                         continue;
                     }
@@ -116,13 +165,8 @@ namespace Kinematic.Runtime
                 for (var bodyBIndex = bodyAIndex + 1; bodyBIndex < dynamicBodies.Count; bodyBIndex++)
                 {
                     var bodyB = dynamicBodies[bodyBIndex];
-                    if (bodyA.CanCollideWith(bodyB) == false)
-                    {
-                        continue;
-                    }
-
                     // 충돌 검사
-                    if (bodyA.TryCollide(bodyB, out var contact) == false)
+                    if (bodyA.TryGetSolvingContact(bodyB, onTriggerContact, out var contact) == false)
                     {
                         continue;
                     }

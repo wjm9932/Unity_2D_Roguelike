@@ -1,4 +1,5 @@
 ﻿using Kinematic.Data;
+using System;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -12,6 +13,23 @@ namespace Kinematic.Runtime
     public sealed class KinematicBody
     {
         private readonly Transform anchor;
+
+        /// <summary>
+        /// 둘 중 하나의 트리거 통과 조건으로 처음 겹친 Tick에 상대 anchor의 GameObject를 전달한다.
+        /// </summary>
+        public event Action<GameObject> OnTriggerEnter;
+        /// <summary>
+        /// 이전 Tick부터 트리거 겹침이 유지되면 상대 anchor의 GameObject를 전달한다.
+        /// </summary>
+        public event Action<GameObject> OnTriggerStay;
+        /// <summary>
+        /// 기존 트리거 겹침이 종료되면 전달한다. 트리거 종료와 등록 해제도 포함한다.
+        /// </summary>
+        public event Action<GameObject> OnTriggerExit;
+
+        internal void NotifyTriggerEnter(KinematicBody other) => OnTriggerEnter?.Invoke(other.anchor.gameObject);
+        internal void NotifyTriggerStay(KinematicBody other) => OnTriggerStay?.Invoke(other.anchor.gameObject);
+        internal void NotifyTriggerExit(KinematicBody other) => OnTriggerExit?.Invoke(other.anchor.gameObject);
 
         #region Movement
         private Vector2 anchorPosition;
@@ -57,7 +75,7 @@ namespace Kinematic.Runtime
 
         #region Layer
         public int Layer => Shape.Layer;
-        public int TriggerLayer { get; set; }
+        public int TriggerLayer { get; set; } = ~0;
         #endregion
 
         #region Internal Values

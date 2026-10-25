@@ -132,7 +132,7 @@ namespace Kinematic.Runtime
         private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
             var body = dynamicBodies[bodyAIndex];
-            if (body.CanCollideWith(candidate) == false)
+            if (body.CanCollideWith(candidate) == false || body.IsTriggerPair(candidate))
             {
                 return;
             }

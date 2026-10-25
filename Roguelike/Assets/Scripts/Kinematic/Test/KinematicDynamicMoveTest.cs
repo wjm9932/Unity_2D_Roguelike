@@ -38,6 +38,21 @@ namespace Kinematic.Runtime
                     //Teleport();
                 }
             });
+
+            body.OnTriggerEnter += triggered =>
+            {
+                Debug.Log($"Enter: {triggered.name}");
+            };
+
+            body.OnTriggerStay += triggered =>
+            {
+                Debug.Log($"Stay: {triggered.name}");
+            };
+
+            body.OnTriggerExit += triggered =>
+            {
+                Debug.Log($"Exit: {triggered.name}");
+            };
         }
 
         private void Start()

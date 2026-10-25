@@ -106,7 +106,7 @@ namespace Kinematic.Runtime
                         break;
                     }
 
-                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.TryCollide(staticBody, out var contact) == false)
+                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.IsTriggerPair(staticBody) || dynamicBody.TryCollide(staticBody, out var contact) == false)
                     {
                         continue;
                     }
@@ -140,7 +140,7 @@ namespace Kinematic.Runtime
 
                     var bodyB = dynamicBodies[bodyBIndex];
 
-                    if (bodyA.CanCollideWith(bodyB) == false)
+                    if (bodyA.CanCollideWith(bodyB) == false || bodyA.IsTriggerPair(bodyB))
                     {
                         continue;
                     }

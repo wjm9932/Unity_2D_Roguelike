@@ -28,7 +28,7 @@ namespace Pawn.Runtime
             {
                 triggerLayer = body.TriggerLayer;
 
-                body.TriggerLayer = 1 << LayerMask.GetMask("Pawn");
+                body.TriggerLayer = LayerMask.GetMask("Pawn");
             }
             else
             {
