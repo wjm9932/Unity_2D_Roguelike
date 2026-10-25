@@ -109,6 +109,7 @@ namespace Kinematic.Runtime
             dashElapsedTime = 0f;
             dashDistance = 0f;
             isDashing = true;
+            body.TriggerLayer = LayerMask.GetMask("Pawn");
             body.SetTrigger(true);
         }
 
@@ -121,7 +122,6 @@ namespace Kinematic.Runtime
 
         private void UpdateDash()
         {
-            body.SetTrigger(true);
             dashElapsedTime = Mathf.Min(dashElapsedTime + Time.deltaTime, dashDuration);
 
             var distance = dashCurve.Evaluate(dashElapsedTime);

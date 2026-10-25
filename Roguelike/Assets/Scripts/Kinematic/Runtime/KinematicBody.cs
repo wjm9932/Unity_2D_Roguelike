@@ -108,23 +108,13 @@ namespace Kinematic.Runtime
 #endif
         }
 
-        public void SetTrigger(bool isTrigger, bool instant = false)
+        public void SetTrigger(bool isTrigger)
         {
-            if (isTrigger)
-            {
-                IsTrigger = true;
-                NeedTriggerRecovery = false;
-                return;
-            }
+            if (IsTrigger == isTrigger) return;
 
-            // 종료를 요청해도 이번 Solve의 이동까지는 Trigger를 유지한다.
-            if (IsTrigger)
-            {
-                NeedTriggerRecovery = true;
-            }
+            IsTrigger = isTrigger;
+            NeedTriggerRecovery = !isTrigger;
         }
-
-        internal void ApplyTriggerEnd() => IsTrigger = false;
 
         public void Teleport(Vector2 position)
         {

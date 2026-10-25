@@ -41,9 +41,6 @@ namespace Kinematic.Runtime
 
             // 이동 요청을 적용하며 충돌을 해소한다.
             movementSolver.Solve();
-
-            // 
-            CompleteGhostRecovery();
             
             // 다이나믹 바디들의 트랜스폼을 이동 및 충돌이 해소된 위치로 동기화한다.
             SyncDynamicTransforms();
@@ -75,39 +72,12 @@ namespace Kinematic.Runtime
                 }
             }
 
-            overlapPushPriorities.Clear();
-        }
-
-        private void CompleteGhostRecovery()
-        {
-            var hasRecovery = false;
-
-            foreach (var body in dynamicBodies)
-            {
-                if (body.NeedTriggerRecovery == false)
-                {
-                    continue;
-                }
-
-                // 모든 종료 요청을 먼저 적용한 뒤 이동 후 겹침을 보정한다.
-                body.ApplyTriggerEnd();
-
-                hasRecovery = true;
-            }
-
-            if (hasRecovery == false)
-            {
-                return;
-            }
-
-            SolveOverlapCollisions();
-
-            // Ghost 종료 바디를 우선 보정하는 규칙은 이번 프레임에만 적용한다.
-            // 다음 프레임부터는 일반 보정으로 전환해, 종료한 바디만 반복해서 밀리며 끼이는 현상을 방지한다.
             foreach (var body in dynamicBodies)
             {
                 body.NeedTriggerRecovery = false;
             }
+
+            overlapPushPriorities.Clear();
         }
 
         private bool SolveDynamicStaticOverlaps()
@@ -159,8 +129,8 @@ namespace Kinematic.Runtime
 
                     hasCollision = true;
 
-                    var recoverBodyA = bodyA.NeedTriggerRecovery && bodyA.CanTriggerThrough(bodyB);
-                    var recoverBodyB = bodyB.NeedTriggerRecovery && bodyB.CanTriggerThrough(bodyA);
+                    var recoverBodyA = bodyA.NeedTriggerRecovery;
+                    var recoverBodyB = bodyB.NeedTriggerRecovery;
 
                     var correctionA = Vector2.zero;
                     var correctionB = Vector2.zero;

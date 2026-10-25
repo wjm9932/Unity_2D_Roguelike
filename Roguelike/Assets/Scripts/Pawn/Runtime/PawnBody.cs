@@ -38,7 +38,7 @@ namespace Pawn.Runtime
             body.SetTrigger(isGhost);
         }
 
-        public void SetTrigger(bool isTrigger, bool isInstant) => body.SetTrigger(isTrigger, isInstant);
+        public void SetTrigger(bool isTrigger) => body.SetTrigger(isTrigger);
 
         public bool RayCast(Vector2 distance, int layerMask, out CastHit hit) => Kinematics.Raycast(body.Center, distance, body, layerMask, out hit);
 
