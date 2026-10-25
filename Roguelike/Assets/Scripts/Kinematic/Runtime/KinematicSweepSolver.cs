@@ -351,31 +351,54 @@ namespace Kinematic.Runtime
         {
             var stateA = sweepBodyStates[bodyAIndex];
             var stateB = sweepBodyStates[bodyBIndex];
-            // Cast와 동일하게 최소 이동량 이하의 잔여 이동은 정지 상태로 취급한다.
+
             var moveDeltaA = stateA.HasMoveDelta ? stateA.RemainingMoveDelta : Vector2.zero;
             var moveDeltaB = stateB.HasMoveDelta ? stateB.RemainingMoveDelta : Vector2.zero;
             var intoSurface = Vector2.Dot(moveDeltaA - moveDeltaB, normal);
-            // A/B 접촉은 B만 움직일 때 수집됐어도, 앞서 처리한 A/C 접촉이 A를 B와 같은 방향·속도로 밀 수 있다.
-            // A/B를 처리할 차례에 더는 서로 파고들지 않는다면 이 접촉은 추가 슬라이드하지 않는다.
+
+            // 앞선 접촉 처리로 더 이상 서로 접근하지 않는다면 보정하지 않는다.
             if (intoSurface >= -SweepDirectionEpsilon)
             {
                 return;
             }
 
-            // 어느 한쪽이 슬라이드 한도를 이미 썼다면 기존 바디별 한도 정책으로 처리한다.
-            if (stateA.SlideIterationCount >= MaxSlideIterationCount || stateB.SlideIterationCount >= MaxSlideIterationCount)
+            var reachedLimitA = stateA.SlideIterationCount >= MaxSlideIterationCount;
+            var reachedLimitB = stateB.SlideIterationCount >= MaxSlideIterationCount;
+
+            // 슬라이드 한도에 도달한 바디는 자신의 충돌면을 기준으로 이동을 제한한다.
+            if (reachedLimitA)
             {
                 SlideSweepBody(bodyAIndex, normal);
+            }
+
+            if (reachedLimitB)
+            {
                 SlideSweepBody(bodyBIndex, -normal);
+            }
+
+            // 한도에 도달한 바디의 이동이 변경되었으므로 상대 이동량을 다시 계산한다.
+            stateA = sweepBodyStates[bodyAIndex];
+            stateB = sweepBodyStates[bodyBIndex];
+
+            moveDeltaA = stateA.HasMoveDelta ? stateA.RemainingMoveDelta : Vector2.zero;
+            moveDeltaB = stateB.HasMoveDelta ? stateB.RemainingMoveDelta : Vector2.zero;
+            intoSurface = Vector2.Dot(moveDeltaA - moveDeltaB, normal);
+
+            if (intoSurface >= -SweepDirectionEpsilon)
+            {
                 return;
             }
 
-            var weightA = Mathf.Max(0f, -Vector2.Dot(moveDeltaA, normal));
-            var weightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
+            // 한도에 도달하지 않은 바디끼리만 상대 접근 성분을 분담한다.
+            var weightA = reachedLimitA ? 0f : Mathf.Max(0f, -Vector2.Dot(moveDeltaA, normal));
+            var weightB = reachedLimitB ? 0f : Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
             var totalWeight = weightA + weightB;
 
-            // 상대가 함께 이동하는 성분은 유지하고, 서로 가까워지는 법선 성분만 분담해 제거한다.
-            // 법선 방향 이동을 조정한 바디는 슬라이드 기회를 소비한다.
+            if (totalWeight <= 0f)
+            {
+                return;
+            }
+
             if (weightA > 0f)
             {
                 stateA.RemainingMoveDelta = moveDeltaA - normal * (intoSurface * weightA / totalWeight);
@@ -383,7 +406,6 @@ namespace Kinematic.Runtime
                 sweepBodyStates[bodyAIndex] = stateA;
             }
 
-            // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
             if (weightB > 0f)
             {
                 stateB.RemainingMoveDelta = moveDeltaB + normal * (intoSurface * weightB / totalWeight);
