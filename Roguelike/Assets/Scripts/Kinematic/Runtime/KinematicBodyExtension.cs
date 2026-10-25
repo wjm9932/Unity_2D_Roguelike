@@ -4,14 +4,11 @@ namespace Kinematic.Runtime
 {
     internal static class KinematicBodyExtension
     {
-        private static readonly int ghostLayerMask = LayerMask.GetMask("Pawn");
-
-        internal static bool CanGhostThrough(this KinematicBody bodyA, KinematicBody bodyB) => (ghostLayerMask & (1 << bodyB.Layer)) != 0;
+        internal static bool CanTriggerThrough(this KinematicBody bodyA, KinematicBody bodyB) => (bodyA.TriggerLayer & (1 << bodyB.Layer)) != 0;
 
         internal static bool CanCollideWith(this KinematicBody bodyA, KinematicBody bodyB)
         {
-            // 고스트 바디는 Pawn만 통과하며, 상대 바디의 충돌 반응도 함께 끈다.
-            if ((bodyA.IsTrigger && bodyA.CanGhostThrough(bodyB)) || (bodyB.IsTrigger && bodyB.CanGhostThrough(bodyA)))
+            if ((bodyA.IsTrigger && bodyA.CanTriggerThrough(bodyB)) || (bodyB.IsTrigger && bodyB.CanTriggerThrough(bodyA)))
             {
                 return false;
             }

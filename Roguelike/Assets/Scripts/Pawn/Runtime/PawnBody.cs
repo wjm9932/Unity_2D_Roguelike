@@ -15,13 +15,30 @@ namespace Pawn.Runtime
         public Vector2 Center => body.Center;
         public int Layer => body.Layer;
 
+        private int triggerLayer;
+
         internal PawnBody(KinematicBody body)
         {
             this.body = body;
         }
 
+        public void SetGhost(bool isGhost)
+        {
+            if (isGhost)
+            {
+                triggerLayer = body.TriggerLayer;
 
-        public void SetGhost(bool isGhost) => body.SetGhost(isGhost);
+                body.TriggerLayer = 1 << LayerMask.GetMask("Pawn");
+            }
+            else
+            {
+                body.TriggerLayer = triggerLayer;
+            }
+
+            body.SetTrigger(isGhost);
+        }
+
+        public void SetTrigger(bool isTrigger, bool isInstant) => body.SetTrigger(isTrigger, isInstant);
 
         public bool RayCast(Vector2 distance, int layerMask, out CastHit hit) => Kinematics.Raycast(body.Center, distance, body, layerMask, out hit);
 

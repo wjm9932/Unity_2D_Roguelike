@@ -91,7 +91,7 @@ namespace Kinematic.Runtime
             }
 
             isDashing = false;
-            body.SetGhost(false);
+            body.SetTrigger(false);
 
             var moveInput = GetMoveInput();
             if (moveInput.sqrMagnitude > Mathf.Epsilon)
@@ -109,7 +109,7 @@ namespace Kinematic.Runtime
             dashElapsedTime = 0f;
             dashDistance = 0f;
             isDashing = true;
-            body.SetGhost(true);
+            body.SetTrigger(true);
         }
 
         private void Teleport()
@@ -121,7 +121,7 @@ namespace Kinematic.Runtime
 
         private void UpdateDash()
         {
-            body.SetGhost(true);
+            body.SetTrigger(true);
             dashElapsedTime = Mathf.Min(dashElapsedTime + Time.deltaTime, dashDuration);
 
             var distance = dashCurve.Evaluate(dashElapsedTime);
@@ -138,7 +138,7 @@ namespace Kinematic.Runtime
             dashSubscription = null;
 
             isDashing = false;
-            body.SetGhost(false);
+            body.SetTrigger(false);
             KinematicWorld.Unregister(body);
             body = null;
         }

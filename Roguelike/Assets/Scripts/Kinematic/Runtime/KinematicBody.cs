@@ -11,10 +11,13 @@ namespace Kinematic.Runtime
     /// </summary>
     public sealed class KinematicBody
     {
-        private readonly Transform target;
+        private readonly Transform anchor;
+
+        #region Movement
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
         private Vector2? pendingTeleportPosition;
+        #endregion
         
         #region Smooth Correction
         private Vector2 smoothCorrectionOffset;
@@ -47,9 +50,17 @@ namespace Kinematic.Runtime
         }
 #endif
 
+        #region Shape
         public ColliderInfo Shape { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
+        #endregion
+
+        #region Layer
         public int Layer => Shape.Layer;
+        public int TriggerLayer { get; set; }
+        #endregion
+
+        #region Internal Values
         internal AABB Bounds
         {
             get
@@ -67,11 +78,12 @@ namespace Kinematic.Runtime
         internal MovePriority Priority { get; }
         internal bool IsStatic { get; }
         internal bool IsTrigger { get; private set; }
-        internal bool NeedsGhostRecovery { get; set; }
+        internal bool NeedTriggerRecovery { get; set; }
+        #endregion
 
         public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority, bool isTrigger)
         {
-            target = transform;
+            anchor = transform;
             anchorPosition = transform.position;
             Shape = shape;
             Priority = movePriority;
@@ -85,7 +97,7 @@ namespace Kinematic.Runtime
 
         public KinematicBody(Transform transform, ColliderInfo shape, bool isTrigger)
         {
-            target = transform;
+            anchor = transform;
             anchorPosition = transform.position;
             Shape = shape;
             IsTrigger = isTrigger;
@@ -96,23 +108,23 @@ namespace Kinematic.Runtime
 #endif
         }
 
-        public void SetGhost(bool isGhost)
+        public void SetTrigger(bool isTrigger, bool instant = false)
         {
-            if (isGhost)
+            if (isTrigger)
             {
                 IsTrigger = true;
-                NeedsGhostRecovery = false;
+                NeedTriggerRecovery = false;
                 return;
             }
 
-            // 종료를 요청해도 이번 Solve의 이동까지는 Ghost를 유지한다.
+            // 종료를 요청해도 이번 Solve의 이동까지는 Trigger를 유지한다.
             if (IsTrigger)
             {
-                NeedsGhostRecovery = true;
+                NeedTriggerRecovery = true;
             }
         }
 
-        internal void ApplyGhostEnd() => IsTrigger = false;
+        internal void ApplyTriggerEnd() => IsTrigger = false;
 
         public void Teleport(Vector2 position)
         {
@@ -176,7 +188,7 @@ namespace Kinematic.Runtime
                 }
             }
 
-            target.position = anchorPosition + smoothCorrectionOffset;
+            anchor.position = anchorPosition + smoothCorrectionOffset;
 
 #if UNITY_EDITOR
             DrawMovementDebug();

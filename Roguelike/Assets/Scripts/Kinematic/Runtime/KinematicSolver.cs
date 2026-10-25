@@ -7,15 +7,21 @@ namespace Kinematic.Runtime
 {
     internal sealed class KinematicSolver
     {
-        private readonly List<KinematicBody> queryResult = new();
-        private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
-        private readonly IReadOnlyList<KinematicBody> dynamicBodies;
-        private readonly IKinematicMovementSolver movementSolver;
         // Initial과 Ghost 복구는 각각 원래 우선순위에서 시작하며, 보정 중 전달된 값은 해당 단계에서만 사용한다.
         private readonly List<int> overlapPushPriorities = new();
+        // 쿼리 결과 캐싱용 리스트
+        private readonly List<KinematicBody> queryResult = new();
+        // 정적 바디
+        private readonly IQueryOnlyQuadTree<KinematicBody> staticBodies;
+        // 동적 바디
+        private readonly IReadOnlyList<KinematicBody> dynamicBodies;
+        // Solver
+        private readonly IKinematicMovementSolver movementSolver;
+        // 충돌 모드
         private CollisionDetection CollisionDetection => KinematicWorld.Settings.CollisionDetection;
+        // Overlap 해소 모드
         private OverlapResolutionMode OverlapResolutionMode => KinematicWorld.Settings.OverlapResolutionMode;
-
+        // Overlap 해소 시도 최대 횟수
         private const int MaxSolverIterationCount = 2;
 
         internal KinematicSolver(IQueryOnlyQuadTree<KinematicBody> statics, IReadOnlyList<KinematicBody> dynamics)
@@ -78,13 +84,13 @@ namespace Kinematic.Runtime
 
             foreach (var body in dynamicBodies)
             {
-                if (body.NeedsGhostRecovery == false)
+                if (body.NeedTriggerRecovery == false)
                 {
                     continue;
                 }
 
                 // 모든 종료 요청을 먼저 적용한 뒤 이동 후 겹침을 보정한다.
-                body.ApplyGhostEnd();
+                body.ApplyTriggerEnd();
 
                 hasRecovery = true;
             }
@@ -100,7 +106,7 @@ namespace Kinematic.Runtime
             // 다음 프레임부터는 일반 보정으로 전환해, 종료한 바디만 반복해서 밀리며 끼이는 현상을 방지한다.
             foreach (var body in dynamicBodies)
             {
-                body.NeedsGhostRecovery = false;
+                body.NeedTriggerRecovery = false;
             }
         }
 
@@ -153,8 +159,8 @@ namespace Kinematic.Runtime
 
                     hasCollision = true;
 
-                    var recoverBodyA = bodyA.NeedsGhostRecovery && bodyA.CanGhostThrough(bodyB);
-                    var recoverBodyB = bodyB.NeedsGhostRecovery && bodyB.CanGhostThrough(bodyA);
+                    var recoverBodyA = bodyA.NeedTriggerRecovery && bodyA.CanTriggerThrough(bodyB);
+                    var recoverBodyB = bodyB.NeedTriggerRecovery && bodyB.CanTriggerThrough(bodyA);
 
                     var correctionA = Vector2.zero;
                     var correctionB = Vector2.zero;
@@ -167,7 +173,7 @@ namespace Kinematic.Runtime
                         // 우선순위가 낮은 바디를 먼저 보정한다.
                         KinematicCollision.GetPriorityCorrections(contact, pushPriorityA, pushPriorityB, out correctionA, out correctionB);
                     }
-                    // 같은 우선순위에서 한쪽만 고스트를 종료했다면 기존처럼 종료한 바디만 보정한다.
+                    // 같은 우선순위에서 한쪽만 트리거를 종료했다면 기존처럼 종료한 바디만 보정한다.
                     else if (recoverBodyA != recoverBodyB)
                     {
                         correctionA = recoverBodyA ? contact.SeparationMtv : Vector2.zero;
