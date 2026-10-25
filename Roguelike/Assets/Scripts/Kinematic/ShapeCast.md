@@ -50,7 +50,7 @@ var count = Kinematics.ShapeCastAll(body, dashMoveDelta, dashHits, LayerMask.Get
 - 결과는 거리순을 보장하지 않는다. 정렬이나 가장 가까운·먼 결과 선택은 호출자가 필요한 기준으로 처리한다.
 - 기본 레이어 마스크는 Everything이다. `ShapeCastAll`은 요청 바디 자신을 제외하고, 원·박스 조회는 `ignoredBody`를 지정할 수 있다.
 - 시작부터 겹친 바디는 거리 0으로 포함한다. 영 변위는 빈 결과를 반환한다.
-- 쿼리는 Ghost 상태와 Layer Collision Matrix에 따른 충돌 반응과 독립적으로 지정한 레이어를 검사한다.
+- 쿼리는 트리거 상태, TriggerLayer, Layer Collision Matrix에 따른 충돌 반응과 독립적으로 지정한 `layerMask`를 검사한다.
 
 `Distance`는 이동 바디가 처음 접촉할 때까지 이동한 거리이며 대상 중심까지의 거리가 아니다. 대쉬 종료점이 대상 중심을 넘는지 판단하려면 `hit.Body.Center`를 이동 방향으로 투영해 비교한다. 대쉬 허용 여부와 이동 거리 결정은 호출자가 처리한다.
 

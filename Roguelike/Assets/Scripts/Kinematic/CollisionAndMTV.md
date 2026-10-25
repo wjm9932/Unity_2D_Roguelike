@@ -18,7 +18,7 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 | `TryGetContact()` | 형상의 원시 겹침과 MTV 반환. 위치 보정용 허용 오차를 적용하지 않음 |
 | `TryCollide()` | 원시 접촉이 있고 `PenetrationDepth > 0.00001f`일 때만 보정 대상 접촉으로 반환 |
 
-Initial·Discrete 보정과 Ghost 복구 완료 검사는 `TryCollide()`를 사용한다. Shape Cast의 시작 겹침은 `TryGetContact()`를 사용하여 작은 침투도 `Fraction = 0` 접촉으로 유지한다. Sweep은 이후 접근 방향과 스침 여부로 이동을 막을지 판단한다. 작은 시작 겹침을 보정 허용 오차로 버리면 한 프레임 파고든 뒤 다음 Initial에서 밀려나는 떨림이 생길 수 있다.
+Initial·Discrete 보정은 `TryCollide()`를 사용한다. Initial 단계에서 수집하는 트리거 이벤트는 위치 보정 허용 오차 없이 `TryGetContact()`의 실제 겹침을 기록한다. Shape Cast의 시작 겹침도 `TryGetContact()`를 사용하여 작은 침투를 `Fraction = 0` 접촉으로 유지한다. Sweep은 이후 접근 방향과 스침 여부로 이동을 막을지 판단한다. 작은 시작 겹침을 보정 허용 오차로 버리면 한 프레임 파고든 뒤 다음 Initial에서 밀려나는 떨림이 생길 수 있다.
 
 허용 오차는 현재 고정값 `1e-5`다. 좌표가 큰 곳에서 나눈 MTV가 float 반올림으로 사라지는 경우를 좌표 정밀도에 맞춰 자동 제외하거나, 보정 전후 위치를 비교하는 처리는 없다.
 
