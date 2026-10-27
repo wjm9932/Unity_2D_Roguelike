@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4b7035eaa2831140ac81b917f92fc31, type: 3}
   m_Name: kinematic_settings
   m_EditorClassIdentifier: Kinematic.Data::Kinematic.Data.KinematicSettings
-  collisionDetection: 1
+  collisionDetection: 0
   maxSolverIterationCount: 16
   overlapResolutionMode: 1

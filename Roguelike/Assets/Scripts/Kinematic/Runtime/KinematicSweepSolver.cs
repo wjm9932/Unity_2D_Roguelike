@@ -188,7 +188,6 @@ namespace Kinematic.Runtime
                         var priorityB = sweepBodyStates[contact.BodyBIndex].PushPriority;
                         if (priorityA == priorityB)
                         {
-                            Debug.Log(priorityA);
                             SlideEqualPriorityBodies(contact.BodyAIndex, contact.BodyBIndex, contact.Normal);
                         }
                         else if (priorityA < priorityB)

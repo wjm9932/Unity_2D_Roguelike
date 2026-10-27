@@ -9,7 +9,7 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 
 ## 역할과 처리 범위
 
-Cast는 형상을 지정한 변위만큼 이동시켰을 때 처음 접촉하는 바디와 위치를 계산하는 조회다. 바디를 실제로 이동시키지 않는다. `distance`라는 인자는 길이 하나가 아니라 방향과 거리를 함께 가진 `Vector2` 변위다.
+Cast는 형상을 지정한 변위만큼 이동시켰을 때 처음 접촉하는 바디와 위치를 계산하는 조회다. 바디를 실제로 이동시키지 않는다. 공개 Cast는 `Vector2 direction`과 `float distance`로 방향과 검사 거리를 각각 받는다. 방향은 내부에서 정규화하며, 실제 검사 변위는 `direction.normalized * distance`다.
 
 | 계층 | 책임 |
 | --- | --- |
@@ -22,17 +22,17 @@ Cast는 형상을 지정한 변위만큼 이동시켰을 때 처음 접촉하는
 
 ## 후보 조회와 최초 결과 선택
 
-`Raycast(origin, moveDelta, ...)`는 반지름 `0`인 `CircleCast`를 사용하여 점의 이동 경로를 검사한다. `moveDelta`는 방향과 검사 길이를 함께 가진 변위이며, 검사 구간은 `origin`에서 `origin + moveDelta`까지다. `ignoredBody`와 `layerMask`를 지정할 수 있고 결과는 `ShapeCastHit`으로 반환한다.
+`Raycast(origin, direction, distance, ...)`는 반지름 `0`인 `CircleCast`를 사용하여 점의 이동 경로를 검사한다. 검사 구간은 `origin`에서 `origin + direction.normalized * distance`까지다. 검사에 포함할 레이어는 `layerMask`로 지정하며 결과는 `CastHit`으로 반환한다. 일반 `Raycast`, `CircleCast`, `BoxCast`와 각 `CastAll`은 제외할 바디를 인자로 받지 않는다.
 
 | 순서 | 처리 |
 | --- | --- |
 | 1 | 이동 형상의 시작 AABB와 끝 AABB를 포함하는 Swept Bounds 생성 |
 | 2 | QuadTree에서 경로 AABB와 겹치는 정적 바디 조회 |
 | 3 | 동적 목록에서 경로 AABB와 Bounds가 겹치는 바디 선택 |
-| 4 | 제외할 바디를 건너뛰고 형상별 Cast 수행 |
+| 4 | 레이어 마스크와 자기 바디 제외 조건을 적용하고 형상별 Cast 수행 |
 | 5 | 가장 작은 이동 비율의 결과 반환 |
 
-AABB 조회는 검사 후보를 줄이는 Broad Phase다. 실제로 닿는지 확인하는 Narrow Phase는 형상별 Cast가 담당한다. `ShapeCast(body, ...)`는 요청 바디 자신을 제외하며, 원·박스 Cast도 `ignoredBody`를 지정할 수 있다.
+AABB 조회는 검사 후보를 줄이는 Broad Phase다. 실제로 닿는지 확인하는 Narrow Phase는 형상별 Cast가 담당한다. 바디 확장 함수인 `body.ShapeCast(...)`와 `body.ShapeCastAll(...)`은 요청 바디 자신을 내부에서 제외한다. 제외 대상은 요청한 `KinematicBody` 인스턴스와 참조가 같은 바디다. 같은 Transform을 사용하는 다른 바디는 제외하지 않는다. 일반 원·박스 Cast는 바디를 자동으로 제외하지 않고 `layerMask`로 검사 대상을 제어한다.
 
 단일 Cast는 결과를 하나만 반환한다. 같은 이동 비율의 결과는 이미 선택한 결과를 유지하므로 후보 순서가 동률 선택에 영향을 준다. Sweep은 같은 시점의 접촉들을 모아 처리하는 별도의 선택 과정을 사용한다.
 
@@ -41,16 +41,18 @@ AABB 조회는 검사 후보를 줄이는 Broad Phase다. 실제로 닿는지 �
 `CircleCastAll`, `BoxCastAll`, `ShapeCastAll`은 같은 후보 조회와 형상별 검사를 사용해 경로상 모든 바디의 첫 접촉을 수집한다. 앞의 바디에 닿아도 조회를 중단하지 않으므로 뒤의 바디도 결과에 포함된다.
 
 ```csharp
-private readonly List<ShapeCastHit> dashHits = new();
+private readonly List<CastHit> dashHits = new();
 
-var count = Kinematics.ShapeCastAll(body, dashMoveDelta, dashHits, LayerMask.GetMask("Pawn"));
+var count = body.ShapeCastAll(dashDirection, dashDistance, LayerMask.GetMask("Pawn"), dashHits);
 ```
+
+`Kinematics` Cast의 `layerMask`는 검사에 포함할 레이어다. Pawn 래퍼는 기본적으로 `Pawn` 레이어를 제외하므로, 호출자가 전달한 포함 마스크에서 해당 비트를 제거한 뒤 Kinematic Cast에 넘긴다.
 
 - 전달한 목록을 매 호출마다 비우고 채우며, 반환값은 결과 수다. 목록을 재사용할 수 있다.
 - 결과는 거리순을 보장하지 않는다. 정렬이나 가장 가까운·먼 결과 선택은 호출자가 필요한 기준으로 처리한다.
-- 기본 레이어 마스크는 Everything이다. `ShapeCastAll`은 요청 바디 자신을 제외하고, 원·박스 조회는 `ignoredBody`를 지정할 수 있다.
+- 기본 레이어 마스크는 `~0`(Everything)이다. `LayerMask.GetMask("Pawn")`을 전달하면 Pawn 레이어만 검사하고, `0`을 전달하면 어떤 레이어도 검사하지 않는다. `ShapeCastAll`은 이 마스크와 별도로 요청 바디 자신을 제외한다.
 - 시작부터 겹친 바디는 거리 0으로 포함한다. 영 변위는 빈 결과를 반환한다.
-- 쿼리는 트리거 상태, TriggerLayer, Layer Collision Matrix에 따른 충돌 반응과 독립적으로 지정한 `layerMask`를 검사한다.
+- 쿼리는 트리거 상태, TriggerLayer, Layer Collision Matrix에 따른 충돌 반응과 독립적으로 지정한 `layerMask`에 포함된 레이어를 검사한다.
 
 `Distance`는 이동 바디가 처음 접촉할 때까지 이동한 거리이며 대상 중심까지의 거리가 아니다. 대쉬 종료점이 대상 중심을 넘는지 판단하려면 `hit.Body.Center`를 이동 방향으로 투영해 비교한다. 대쉬 허용 여부와 이동 거리 결정은 호출자가 처리한다.
 

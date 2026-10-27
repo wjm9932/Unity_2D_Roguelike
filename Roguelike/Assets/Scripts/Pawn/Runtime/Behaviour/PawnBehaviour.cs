@@ -2,7 +2,6 @@ using EventSystem;
 using Pawn.Interface;
 using Pawn.Data;
 using Pawn.Runtime.State;
-using UnityEngine;
 
 namespace Pawn.Runtime.Behaviour
 {
@@ -10,14 +9,12 @@ namespace Pawn.Runtime.Behaviour
     {
         private StateMachine.StateMachine stateMachine;
 
-        private Transform pawnTransform;
         private IMoveRequestCollector moveRequestCollector;
         private PawnBody pawnBody;
         private IPawnStatsDefinition pawnStats;
 
-        public PawnBehaviour(IPawnStatsDefinition stats, Transform transform, IMoveRequestCollector collector, PawnBody body)
+        public PawnBehaviour(IPawnStatsDefinition stats, IMoveRequestCollector collector, PawnBody body)
         {
-            pawnTransform = transform;
             moveRequestCollector = collector;
             pawnBody = body;
             pawnStats = stats;
@@ -31,7 +28,7 @@ namespace Pawn.Runtime.Behaviour
             stateMachine.CurrentState.Update(dt);
         }
 
-        public bool OnEvent(EventSystem.Event e)
+        public bool OnEvent(Event e)
         {
             if ((stateMachine.CurrentState as IEventListener)?.OnEvent(e) == true)
             {

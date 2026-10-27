@@ -12,7 +12,10 @@ namespace Kinematic.Runtime
     /// </summary>
     public sealed class KinematicBody
     {
-        private readonly Transform anchor;
+        /// <summary>
+        /// 바디가 소유하는 트랜스폼
+        /// </summary>
+        public Transform Transform { get; private set; }
 
         /// <summary>
         /// 둘 중 하나의 트리거 통과 조건으로 처음 겹친 Tick에 상대 anchor의 GameObject를 전달한다.
@@ -27,9 +30,9 @@ namespace Kinematic.Runtime
         /// </summary>
         public event Action<GameObject> OnTriggerExit;
 
-        internal void NotifyTriggerEnter(KinematicBody other) => OnTriggerEnter?.Invoke(other.anchor.gameObject);
-        internal void NotifyTriggerStay(KinematicBody other) => OnTriggerStay?.Invoke(other.anchor.gameObject);
-        internal void NotifyTriggerExit(KinematicBody other) => OnTriggerExit?.Invoke(other.anchor.gameObject);
+        internal void NotifyTriggerEnter(KinematicBody other) => OnTriggerEnter?.Invoke(other.Transform.gameObject);
+        internal void NotifyTriggerStay(KinematicBody other) => OnTriggerStay?.Invoke(other.Transform.gameObject);
+        internal void NotifyTriggerExit(KinematicBody other) => OnTriggerExit?.Invoke(other.Transform.gameObject);
 
         #region Movement
         private Vector2 anchorPosition;
@@ -101,7 +104,7 @@ namespace Kinematic.Runtime
 
         public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority, bool isTrigger)
         {
-            anchor = transform;
+            Transform = transform;
             anchorPosition = transform.position;
             Shape = shape;
             Priority = movePriority;
@@ -115,7 +118,7 @@ namespace Kinematic.Runtime
 
         public KinematicBody(Transform transform, ColliderInfo shape, bool isTrigger)
         {
-            anchor = transform;
+            Transform = transform;
             anchorPosition = transform.position;
             Shape = shape;
             IsTrigger = isTrigger;
@@ -196,7 +199,7 @@ namespace Kinematic.Runtime
                 }
             }
 
-            anchor.position = anchorPosition + smoothCorrectionOffset;
+            Transform.position = anchorPosition + smoothCorrectionOffset;
 
 #if UNITY_EDITOR
             DrawMovementDebug();

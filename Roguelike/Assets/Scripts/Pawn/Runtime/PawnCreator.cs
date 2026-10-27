@@ -27,7 +27,7 @@ namespace Pawn.Runtime
             var body = new KinematicBody(container.transform,assetDef.ColiderInfo, assetDef.MovePriority, assetDef.IsTrigger);
             var (requestQueue, requestCollector) = MoveRequestQueue.Create();
             var moveProcessor = new PawnMoveProcessor(new PawnMotor(body), requestQueue, statsDef.ActiveAccelerationCurve, statsDef.PassiveDecelerationCurve);
-            var behaviour = new PawnBehaviour(statsDef, container.transform, requestCollector, new PawnBody(body));
+            var behaviour = new PawnBehaviour(statsDef, requestCollector, new PawnBody(body));
             var pawn = new Pawn(controller, statsBehaviour, behaviour, moveProcessor, body);
 
             // 이 어뎁터 구조는 고민 필요

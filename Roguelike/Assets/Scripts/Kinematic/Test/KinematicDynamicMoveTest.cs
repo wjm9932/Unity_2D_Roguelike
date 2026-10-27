@@ -41,17 +41,17 @@ namespace Kinematic.Runtime
 
             body.OnTriggerEnter += triggered =>
             {
-                Debug.Log($"Enter: {triggered.name}");
+                Debug.Log($"Enter: {triggered.name}, FrameCount: {Time.frameCount}");
             };
 
             body.OnTriggerStay += triggered =>
             {
-                Debug.Log($"Stay: {triggered.name}");
+                Debug.Log($"Stay: {triggered.name}, FrameCount: {Time.frameCount}");
             };
 
             body.OnTriggerExit += triggered =>
             {
-                Debug.Log($"Exit: {triggered.name}");
+                Debug.Log($"Exit: {triggered.name}, FrameCount: {Time.frameCount}");
             };
         }
 
