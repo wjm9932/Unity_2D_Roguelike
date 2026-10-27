@@ -40,7 +40,7 @@ namespace Kinematic.Runtime
             dynamicBodies = dynamics;
         }
 
-        internal bool CircleCast(Vector2 origin, float radius, Vector2 distance, KinematicBody ignoredBody, int layerMask, out CastHit hit)
+        internal bool CircleCast(Vector2 origin, float radius, Vector2 moveDelta, int layerMask, out CastHit hit)
         {
             Debug.Assert(radius >= 0f, $"CircleCast radius must be non-negative: {radius}");
 
@@ -51,10 +51,10 @@ namespace Kinematic.Runtime
             }
 
             var shape = ColliderInfo.CreateCircle(Vector2.zero, radius);
-            return ShapeCastCore(origin, shape, distance, ignoredBody, layerMask, out hit);
+            return ShapeCastCore(origin, shape, moveDelta, null, layerMask, out hit);
         }
 
-        internal bool BoxCast(Vector2 origin, Vector2 halfExtents, Vector2 distance, KinematicBody ignoredBody, int layerMask, out CastHit hit)
+        internal bool BoxCast(Vector2 origin, Vector2 halfExtents, Vector2 moveDelta, int layerMask, out CastHit hit)
         {
             Debug.Assert(halfExtents.x >= 0f && halfExtents.y >= 0f, $"BoxCast half extents must be non-negative: {halfExtents}");
 
@@ -65,12 +65,12 @@ namespace Kinematic.Runtime
             }
 
             var shape = ColliderInfo.CreateBox(Vector2.zero, halfExtents);
-            return ShapeCastCore(origin, shape, distance, ignoredBody, layerMask, out hit);
+            return ShapeCastCore(origin, shape, moveDelta, null, layerMask, out hit);
         }
 
-        internal bool ShapeCast(KinematicBody body, Vector2 distance, int layerMask, out CastHit hit) => ShapeCastCore(body.Center, body.Shape, distance, body, layerMask, out hit);
+        internal bool ShapeCast(KinematicBody body, Vector2 moveDelta, int layerMask, out CastHit hit) => ShapeCastCore(body.Center, body.Shape, moveDelta, body, layerMask, out hit);
 
-        internal int CircleCastAll(Vector2 origin, float radius, Vector2 distance, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
+        internal int CircleCastAll(Vector2 origin, float radius, Vector2 moveDelta, int layerMask, List<CastHit> results)
         {
             Debug.Assert(radius >= 0f, $"CircleCastAll radius must be non-negative: {radius}");
 
@@ -83,10 +83,10 @@ namespace Kinematic.Runtime
 
             var shape = ColliderInfo.CreateCircle(Vector2.zero, radius);
 
-            return ShapeCastAllCore(origin, shape, distance, ignoredBody, layerMask, results);
+            return ShapeCastAllCore(origin, shape, moveDelta, null, layerMask, results);
         }
 
-        internal int BoxCastAll(Vector2 origin, Vector2 halfExtents, Vector2 distance, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
+        internal int BoxCastAll(Vector2 origin, Vector2 halfExtents, Vector2 moveDelta, int layerMask, List<CastHit> results)
         {
             Debug.Assert(halfExtents.x >= 0f && halfExtents.y >= 0f, $"BoxCastAll half extents must be non-negative: {halfExtents}");
 
@@ -99,17 +99,17 @@ namespace Kinematic.Runtime
 
             var shape = ColliderInfo.CreateBox(Vector2.zero, halfExtents);
 
-            return ShapeCastAllCore(origin, shape, distance, ignoredBody, layerMask, results);
+            return ShapeCastAllCore(origin, shape, moveDelta, null, layerMask, results);
         }
 
         internal int ShapeCastAll(KinematicBody body, Vector2 distance, int layerMask, List<CastHit> results)
             => ShapeCastAllCore(body.Center, body.Shape, distance, body, layerMask, results);
 
-        private bool ShapeCastCore(Vector2 origin, in ColliderInfo shape, Vector2 distance, KinematicBody ignoredBody, int layerMask, out CastHit hit)
+        private bool ShapeCastCore(Vector2 origin, in ColliderInfo shape, Vector2 moveDelta, KinematicBody ignoredBody, int layerMask, out CastHit hit)
         {
             hit = default;
 
-            if (QueryCandidates(origin, shape, distance) == false)
+            if (QueryCandidates(origin, shape, moveDelta) == false)
             {
                 return false;
             }
@@ -119,7 +119,7 @@ namespace Kinematic.Runtime
 
             foreach (var candidate in queryResult)
             {
-                if (TryCastCandidate(origin, shape, distance, ignoredBody, candidate, layerMask, out var candidateHit) == false || candidateHit.Fraction >= closestFraction)
+                if (TryCastCandidate(origin, shape, moveDelta, ignoredBody, candidate, layerMask, out var candidateHit) == false || candidateHit.Fraction >= closestFraction)
                 {
                     continue;
                 }
@@ -132,19 +132,19 @@ namespace Kinematic.Runtime
             return hasHit;
         }
 
-        private int ShapeCastAllCore(Vector2 origin, in ColliderInfo shape, Vector2 distance, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
+        private int ShapeCastAllCore(Vector2 origin, in ColliderInfo shape, Vector2 moveDelta, KinematicBody ignoredBody, int layerMask, List<CastHit> results)
         {
             // 이전 조회 결과를 비우고 이번 경로의 바디별 첫 접촉을 수집한다.
             results.Clear();
 
-            if (QueryCandidates(origin, shape, distance) == false)
+            if (QueryCandidates(origin, shape, moveDelta) == false)
             {
                 return 0;
             }
 
             foreach (var candidate in queryResult)
             {
-                if (TryCastCandidate(origin, shape, distance, ignoredBody, candidate, layerMask, out var candidateHit))
+                if (TryCastCandidate(origin, shape, moveDelta, ignoredBody, candidate, layerMask, out var candidateHit))
                 {
                     results.Add(candidateHit);
                 }
@@ -153,9 +153,9 @@ namespace Kinematic.Runtime
             return results.Count;
         }
 
-        private bool QueryCandidates(Vector2 origin, in ColliderInfo shape, Vector2 distance)
+        private bool QueryCandidates(Vector2 origin, in ColliderInfo shape, Vector2 moveDelta)
         {
-            if (staticBodies == null || distance.sqrMagnitude <= Mathf.Epsilon)
+            if (staticBodies == null || moveDelta.sqrMagnitude <= Mathf.Epsilon)
             {
                 return false;
             }
@@ -167,7 +167,7 @@ namespace Kinematic.Runtime
                 _ => Vector2.zero
             };
             // 쿼드 트리 조회용 이동경로 AABB
-            var sweptBounds = AABB.Create(origin, extents).GetSweptBounds(distance);
+            var sweptBounds = AABB.Create(origin, extents).GetSweptBounds(moveDelta);
 
             staticBodies.Query(sweptBounds, queryResult);
 
