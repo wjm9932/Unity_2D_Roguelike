@@ -27,7 +27,25 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 
 공통 동작 계약에는 Move 변위의 누적, Teleport 목적지의 예약, Solve 시점의 충돌 계산과 Transform 반영이 포함된다. 게임 쪽 래퍼는 사용할 수 있는 기능을 제한하며, 이 계약을 변경하지 않는다. 접근 제한과 생성·조회 방식은 [실행 흐름](RuntimeFlow.md#바디의-접근-권한)에 설명한다.
 
-현재 지원 형상은 원과 축에 정렬된 박스다. 회전된 박스나 다각형은 지원하지 않으며, 충돌 형상에 Transform의 회전과 scale을 자동으로 반영하지 않는다. Unity의 `Rigidbody2D`가 이동을 계산하는 구조가 아니라, 직접 보관한 위치와 형상으로 이동 및 접촉을 계산한다.
+바디의 지원 형상은 원과 축에 정렬된 박스다. `OverlapBox` 조회 형상에는 도 단위 회전을 지정할 수 있지만 바디의 이동·Sweep 형상은 회전하지 않는다. 충돌 형상에 Transform의 회전과 scale을 자동으로 반영하지 않는다. Unity의 `Rigidbody2D`가 이동을 계산하는 구조가 아니라, 직접 보관한 위치와 형상으로 이동 및 접촉을 계산한다.
+
+## Overlap 조회
+
+`Kinematics.OverlapBox(center, halfExtents, angle, layerMask, results)`와 `Kinematics.OverlapCircle(center, radius, layerMask, results)`는 현재 겹친 바디의 GameObject를 전달받은 `List<GameObject>`에 채우고 개수를 반환한다. 마스크를 생략하는 오버로드는 모든 레이어를 검사한다. `halfExtents`는 박스 전체 크기의 절반이며 `angle`은 도 단위다.
+
+`OverlapBox`는 `angle` 대신 `Vector2 forward`를 받는 오버로드도 제공한다. 이 버전은 박스의 로컬 Y축을 forward로, X축을 좌우로 사용한다. `halfExtents.x`는 좌우 폭의 절반, `halfExtents.y`는 앞뒤 길이의 절반이다. 진입점에서 `Atan2(forward.y, forward.x) * Rad2Deg - 90`으로 변환해 기존 각도 버전에 전달한다. 방향은 정규화할 필요가 없으며 영벡터를 전달하면 목록을 비우고 결과 0개를 반환한다. `center`는 두 버전 모두 박스 중심이다.
+
+```csharp
+private readonly List<GameObject> overlapResults = new();
+
+var count = Kinematics.OverlapBox(center, new Vector2(2f, 0.5f), 45f, LayerMask.GetMask("Pawn"), overlapResults);
+var forwardCount = Kinematics.OverlapBox(center, new Vector2(0.5f, 2f), forward, LayerMask.GetMask("Pawn"), overlapResults);
+var circleCount = Kinematics.OverlapCircle(center, 2f, LayerMask.GetMask("Pawn"), overlapResults);
+```
+
+각 호출은 결과 목록을 먼저 비우며 거리순 정렬을 하지 않는다. 결과는 바디 단위이므로 같은 GameObject에 여러 바디가 등록되어 있으면 중복될 수 있다. 정적·동적 바디를 모두 조회하고, `layerMask`는 포함할 레이어를 지정한다. 트리거 상태, TriggerLayer, Layer Collision Matrix는 조회 결과를 제한하지 않으며 자기 자신도 별도로 제외하지 않는다. 기존 접촉 판정처럼 양의 깊이로 겹친 형상을 검출하고 경계에 닿기만 한 접촉은 제외한다.
+
+박스 조회는 OBB를 감싸는 AABB로 QuadTree 후보를 모은 뒤, 대상 AABB와는 네 축의 SAT로 검사한다. 원과의 검사는 원 중심을 조회 박스의 로컬 좌표로 옮겨 기존 원·박스 판정을 사용한다. 원 조회는 기존 원·원 및 원·AABB 판정을 재사용한다. 조회는 바디를 이동시키거나 트리거 이벤트를 발생시키지 않는다.
 
 ## 구현 의도
 

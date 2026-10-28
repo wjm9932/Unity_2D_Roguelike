@@ -8,6 +8,7 @@ namespace Kinematic.Runtime
     {
         internal static KinematicSimulation Instance { get; } = new();
         internal KinematicShapeCast Cast { get; private set; }
+        internal KinematicOverlap Overlap { get; private set; }
 
         private QuadTree staticBodies;
         private List<KinematicBody> dynamicBodies;
@@ -25,6 +26,7 @@ namespace Kinematic.Runtime
             dynamicBodies = new List<KinematicBody>();
             solver = new KinematicSolver(staticBodies, dynamicBodies);
             Cast = new KinematicShapeCast(staticBodies, dynamicBodies);
+            Overlap = new KinematicOverlap(staticBodies, dynamicBodies);
             isInit = true;
         }
 
@@ -76,6 +78,7 @@ namespace Kinematic.Runtime
             dynamicBodies = null;
             solver = null;
             Cast = null;
+            Overlap = null;
         }
 
 #if UNITY_EDITOR

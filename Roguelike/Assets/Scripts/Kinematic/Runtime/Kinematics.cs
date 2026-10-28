@@ -5,6 +5,37 @@ namespace Kinematic.Runtime
 {
     public static class Kinematics
     {
+        #region Overlap
+        public static int OverlapBox(Vector2 center, Vector2 halfExtents, float angle, List<GameObject> results)
+            => OverlapBox(center, halfExtents, angle, ~0, results);
+
+        // angle은 도 단위이며 halfExtents는 박스 전체 크기의 절반이다.
+        public static int OverlapBox(Vector2 center, Vector2 halfExtents, float angle, int layerMask, List<GameObject> results)
+            => KinematicSimulation.Instance.Overlap.OverlapBox(center, halfExtents, angle, layerMask, results);
+
+        public static int OverlapBox(Vector2 center, Vector2 halfExtents, Vector2 forward, List<GameObject> results)
+            => OverlapBox(center, halfExtents, forward, ~0, results);
+
+        // 로컬 Y축은 forward, 로컬 X축은 좌우다. 방향의 크기는 박스 크기에 영향을 주지 않는다.
+        public static int OverlapBox(Vector2 center, Vector2 halfExtents, Vector2 forward, int layerMask, List<GameObject> results)
+        {
+            if (forward.x == 0f && forward.y == 0f)
+            {
+                results.Clear();
+                return 0;
+            }
+
+            var angle = Mathf.Atan2(forward.y, forward.x) * Mathf.Rad2Deg - 90f;
+            return OverlapBox(center, halfExtents, angle, layerMask, results);
+        }
+
+        public static int OverlapCircle(Vector2 center, float radius, List<GameObject> results)
+            => OverlapCircle(center, radius, ~0, results);
+
+        public static int OverlapCircle(Vector2 center, float radius, int layerMask, List<GameObject> results)
+            => KinematicSimulation.Instance.Overlap.OverlapCircle(center, radius, layerMask, results);
+        #endregion
+
         #region Raycast
         public static bool Raycast(Vector2 origin, Vector2 direction, float distance, out CastHit hit)
             => Raycast(origin, direction, distance, ~0, out hit);

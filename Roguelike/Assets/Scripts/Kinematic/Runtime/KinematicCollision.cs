@@ -70,6 +70,79 @@ namespace Kinematic.Runtime
             return hasCollision;
         }
 
+        #region OBB 
+        // Overlap 조회용 회전 박스다. 대상 바디의 박스는 기존 AABB를 사용한다.
+        internal static bool TryBoxBox(Vector2 centerA, Vector2 halfExtentsA, float angle, Vector2 centerB, Vector2 halfExtentsB, out Contact contact)
+        {
+            if (angle == 0f)
+            {
+                return TryBoxBox(centerA, halfExtentsA, centerB, halfExtentsB, out contact);
+            }
+
+            var radians = angle * Mathf.Deg2Rad;
+            var axisX = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
+            var axisY = new Vector2(-axisX.y, axisX.x);
+            var delta = centerA - centerB;
+            var depth = float.PositiveInfinity;
+            var normal = Vector2.zero;
+            contact = default;
+
+                // OBB Box
+            if (TryBoxAxis(axisX, delta, halfExtentsA, axisX, axisY, halfExtentsB, ref depth, ref normal) == false ||
+                TryBoxAxis(axisY, delta, halfExtentsA, axisX, axisY, halfExtentsB, ref depth, ref normal) == false ||
+                // AABB Box
+                TryBoxAxis(Vector2.right, delta, halfExtentsA, axisX, axisY, halfExtentsB, ref depth, ref normal) == false ||
+                TryBoxAxis(Vector2.up, delta, halfExtentsA, axisX, axisY, halfExtentsB, ref depth, ref normal) == false)
+            {
+                return false;
+            }
+
+            contact = new Contact(normal, depth);
+            return true;
+        }
+
+        private static bool TryBoxAxis(Vector2 axis, Vector2 delta, Vector2 halfExtentsA, Vector2 axisX, Vector2 axisY, Vector2 halfExtentsB, ref float depth, ref Vector2 normal)
+        {
+            var radiusA = halfExtentsA.x * Mathf.Abs(Vector2.Dot(axis, axisX)) + halfExtentsA.y * Mathf.Abs(Vector2.Dot(axis, axisY));
+            var radiusB = halfExtentsB.x * Mathf.Abs(axis.x) + halfExtentsB.y * Mathf.Abs(axis.y);
+            var distance = Vector2.Dot(delta, axis);
+            var overlap = radiusA + radiusB - Mathf.Abs(distance);
+
+            if (overlap <= 0f)
+            {
+                return false;
+            }
+
+            if (overlap < depth)
+            {
+                depth = overlap;
+                normal = distance < 0f ? -axis : axis;
+            }
+
+            return true;
+        }
+
+        internal static bool TryBoxCircle(Vector2 boxCenter, Vector2 halfExtents, float angle, Vector2 circleCenter, float radius, out Contact contact)
+        {
+            var radians = angle * Mathf.Deg2Rad;
+            var axisX = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
+            var axisY = new Vector2(-axisX.y, axisX.x);
+            var offset = circleCenter - boxCenter;
+            var localCenter = new Vector2(Vector2.Dot(offset, axisX), Vector2.Dot(offset, axisY));
+            contact = default;
+
+            if (TryBoxCircle(Vector2.zero, halfExtents, localCenter, radius, out var localContact) == false)
+            {
+                return false;
+            }
+
+            var normal = axisX * localContact.SeparationNormal.x + axisY * localContact.SeparationNormal.y;
+            contact = new Contact(normal, localContact.PenetrationDepth);
+            return true;
+        }
+        #endregion
+
+        #region AABB
         private static bool TryBoxBox(Vector2 centerA, Vector2 halfExtentsA, Vector2 centerB, Vector2 halfExtentsB, out Contact contact)
         {
             contact = default;
@@ -209,5 +282,6 @@ namespace Kinematic.Runtime
                    point.y >= boxMin.y &&
                    point.y <= boxMax.y;
         }
+        #endregion
     }
 }
