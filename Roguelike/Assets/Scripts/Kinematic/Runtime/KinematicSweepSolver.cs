@@ -364,33 +364,16 @@ namespace Kinematic.Runtime
             var reachedLimitA = stateA.SlideIterationCount >= MaxSlideIterationCount;
             var reachedLimitB = stateB.SlideIterationCount >= MaxSlideIterationCount;
 
-            // 슬라이드 한도에 도달한 바디는 자신의 충돌면을 기준으로 이동을 제한한다.
-            if (reachedLimitA)
+            if (reachedLimitA || reachedLimitB)
             {
                 SlideSweepBody(bodyAIndex, normal);
-            }
-
-            if (reachedLimitB)
-            {
                 SlideSweepBody(bodyBIndex, -normal);
-            }
-
-            // 한도에 도달한 바디의 이동이 변경되었으므로 상대 이동량을 다시 계산한다.
-            stateA = sweepBodyStates[bodyAIndex];
-            stateB = sweepBodyStates[bodyBIndex];
-
-            moveDeltaA = stateA.HasMoveDelta ? stateA.RemainingMoveDelta : Vector2.zero;
-            moveDeltaB = stateB.HasMoveDelta ? stateB.RemainingMoveDelta : Vector2.zero;
-            intoSurface = Vector2.Dot(moveDeltaA - moveDeltaB, normal);
-
-            if (intoSurface >= -SweepDirectionEpsilon)
-            {
                 return;
             }
 
-            // 한도에 도달하지 않은 바디끼리만 상대 접근 성분을 분담한다.
-            var weightA = reachedLimitA ? 0f : Mathf.Max(0f, -Vector2.Dot(moveDeltaA, normal));
-            var weightB = reachedLimitB ? 0f : Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
+            // 양쪽 모두 한도가 남아 있을 때 상대 접근 성분을 분담한다.
+            var weightA = Mathf.Max(0f, -Vector2.Dot(moveDeltaA, normal));
+            var weightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
             var totalWeight = weightA + weightB;
 
             if (totalWeight <= 0f)
