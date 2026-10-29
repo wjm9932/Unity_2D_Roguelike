@@ -9,10 +9,6 @@ namespace Kinematic.Runtime
         public static int OverlapBox(Vector2 center, Vector2 halfExtents, float angle, List<GameObject> results)
             => OverlapBox(center, halfExtents, angle, ~0, results);
 
-        // angle은 도 단위이며 halfExtents는 박스 전체 크기의 절반이다.
-        public static int OverlapBox(Vector2 center, Vector2 halfExtents, float angle, int layerMask, List<GameObject> results)
-            => KinematicSimulation.Instance.Overlap.OverlapBox(center, halfExtents, angle, layerMask, results);
-
         public static int OverlapBox(Vector2 center, Vector2 halfExtents, Vector2 forward, List<GameObject> results)
             => OverlapBox(center, halfExtents, forward, ~0, results);
 
@@ -28,6 +24,10 @@ namespace Kinematic.Runtime
             var angle = Mathf.Atan2(forward.y, forward.x) * Mathf.Rad2Deg - 90f;
             return OverlapBox(center, halfExtents, angle, layerMask, results);
         }
+
+        // angle은 도 단위이며 halfExtents는 박스 전체 크기의 절반이다.
+        public static int OverlapBox(Vector2 center, Vector2 halfExtents, float angle, int layerMask, List<GameObject> results)
+            => KinematicSimulation.Instance.Overlap.OverlapBox(center, halfExtents, angle, layerMask, results);
 
         public static int OverlapCircle(Vector2 center, float radius, List<GameObject> results)
             => OverlapCircle(center, radius, ~0, results);

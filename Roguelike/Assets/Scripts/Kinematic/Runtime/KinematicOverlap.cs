@@ -20,7 +20,7 @@ namespace Kinematic.Runtime
         internal int OverlapBox(Vector2 center, Vector2 halfExtents, float angle, int layerMask, List<GameObject> results)
         {
             results.Clear();
-            Debug.Assert(halfExtents.x >= 0f && halfExtents.y >= 0f, $"OverlapBox half extents must be non-negative: {halfExtents}");
+            
             if (halfExtents.x < 0f || halfExtents.y < 0f)
             {
                 return 0;
@@ -30,13 +30,14 @@ namespace Kinematic.Runtime
             var cos = Mathf.Abs(Mathf.Cos(radians));
             var sin = Mathf.Abs(Mathf.Sin(radians));
             var extents = new Vector2(cos * halfExtents.x + sin * halfExtents.y, sin * halfExtents.x + cos * halfExtents.y);
+
             return Overlap(center, ColliderInfo.CreateBox(Vector2.zero, halfExtents), angle, AABB.Create(center, extents), layerMask, results);
         }
 
         internal int OverlapCircle(Vector2 center, float radius, int layerMask, List<GameObject> results)
         {
             results.Clear();
-            Debug.Assert(radius >= 0f, $"OverlapCircle radius must be non-negative: {radius}");
+         
             if (radius < 0f)
             {
                 return 0;
