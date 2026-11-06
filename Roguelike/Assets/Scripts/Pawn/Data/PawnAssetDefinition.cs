@@ -14,9 +14,11 @@ namespace Pawn.Data
         [SerializeField] private GameObject avatar;
         [SerializeField] private ColliderInfo colliderInfo;
         [SerializeField] private MovePriority movePriority = MovePriority.Medium;
+        [SerializeField] private bool isTrigger;
 
         public GameObject Avatar => avatar;
         public ColliderInfo ColiderInfo => colliderInfo;
         public MovePriority MovePriority => movePriority;
+        public bool IsTrigger => isTrigger;
     }
 }

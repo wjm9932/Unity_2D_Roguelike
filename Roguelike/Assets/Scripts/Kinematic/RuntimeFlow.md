@@ -38,11 +38,11 @@ Kinematic 단계는 `KinematicWorld.Tick()`을 호출하고, 월드가 아직 �
 
 ## 바디의 접근 권한
 
-`KinematicBody`는 인터페이스를 구현하지 않는 구체 클래스이며, 조회 프로퍼티·`SetGhost()`·`Move()`·`Teleport()`를 public으로 제공한다. 사용하는 게임의 역할별 접근 방식을 바디의 상속 관계나 가시성에 넣지 않는다.
+`KinematicBody`는 인터페이스를 구현하지 않는 구체 클래스이며, 조회 프로퍼티·`SetTrigger()`·`Move()`·`Teleport()`를 public으로 제공한다. `OnTriggerEnter`, `OnTriggerStay`, `OnTriggerExit` 이벤트는 상대 바디의 `GameObject`를 전달한다. 사용하는 게임의 역할별 접근 방식을 바디의 상속 관계나 가시성에 넣지 않는다.
 
 public 생성자로 실제 `KinematicBody`를 생성한다. 호출자는 바디를 직접 움직이거나 자신의 게임 로직에 맞는 별도 클래스로 감싸서 사용할 수 있다. 특정 프로젝트의 접근 제한을 위해 바디에 이동·상태 인터페이스를 추가하거나 생성자·이동 API를 감추지 않는다.
 
-현재 게임의 접근 제한은 Pawn 쪽의 두 클래스가 담당한다. [PawnBody](../Pawn/Runtime/PawnBody.cs)는 조회 프로퍼티·`SetGhost()`·자기 형상의 `ShapeCast()`와 `ShapeCastAll()`만 제공하고, [PawnMotor](../Pawn/Runtime/PawnMotor.cs)는 `Move()`·`Teleport()`만 제공한다. 둘 다 실제 바디를 private으로 보관하며 서로 상속하지 않는다. `PawnCreator`는 `PawnMover`에 `PawnMotor`를, `PawnBehaviour`와 IdleSprint State에는 `IMoveRequestCollector`와 `PawnBody`를 전달한다. 전달받은 래퍼를 구체 바디나 다른 래퍼로 캐스팅할 수 없다. `Pawn`은 실제 바디를 보관해 월드 등록·해제를 담당한다.
+현재 게임의 접근 제한은 Pawn 쪽의 두 클래스가 담당한다. [PawnBody](../Pawn/Runtime/PawnBody.cs)는 조회 프로퍼티·`SetGhost()`·자기 형상의 `ShapeCast()`와 `ShapeCastAll()`만 제공하고, [PawnMotor](../Pawn/Runtime/PawnMotor.cs)는 `Move()`·`Teleport()`만 제공한다. `PawnBody.SetGhost()`는 대쉬 중 `IsTrigger`와 `TriggerLayer`를 함께 바꾸는 게임 측 편의 API다. 둘 다 실제 바디를 private으로 보관하며 서로 상속하지 않는다. `PawnCreator`는 `PawnMover`에 `PawnMotor`를, `PawnBehaviour`와 IdleSprint State에는 `IMoveRequestCollector`와 `PawnBody`를 전달한다. 전달받은 래퍼를 구체 바디나 다른 래퍼로 캐스팅할 수 없다. `Pawn`은 실제 바디를 보관해 월드 등록·해제를 담당한다.
 
 `KinematicWorld.Register()`·`Unregister()`와 Cast API의 바디 인자는 구체 `KinematicBody`를 받고, `ShapeCastHit.Body`도 실제 대상 바디를 반환한다. 월드 경계에서 인터페이스를 구체 타입으로 캐스팅할 필요가 없다. `PawnBody`의 자기 형상 Cast는 내부의 실제 바디로 호출하므로, 자기 자신 제외도 기존 바디 참조 비교로 처리한다. Cast 결과는 게임 쪽 접근 제한을 적용한 객체로 변환하지 않는다.
 
@@ -53,8 +53,8 @@ public 생성자로 실제 `KinematicBody`를 생성한다. 호출자는 바디�
 | 1 | 동적 바디의 Teleport 목적지 적용 | 이동 계산을 시작할 위치 결정 |
 | 2 | 시작부터 겹친 바디의 접촉 해소 | 이동 경로 검사 전에 초기 침투 보정 |
 | 3 | 선택한 이동 솔버 실행 | Sweep 또는 Discrete 방식으로 요청 변위 처리 |
-| 4 | Ghost 복구 완료 여부 확인 | 종료한 바디에 통과 대상과의 겹침이 남았는지 검사 |
-| 5 | 동적 바디의 Transform 동기화 | 계산 위치와 Smooth 표시 오프셋을 게임 오브젝트에 반영 |
+| 4 | 동적 바디의 Transform 동기화 | 계산 위치와 Smooth 표시 오프셋을 게임 오브젝트에 반영 |
+| 5 | 트리거 이벤트 발행 | Initial에서 기록한 현재 겹침 쌍을 이전 Tick과 비교해 Enter·Stay·Exit 통지 |
 
 초기 겹침 해소와 이동 후 겹침 해소는 서로 다른 단계다. Sweep과 Discrete 모두 초기 겹침 해소를 거친다. 이동 후 겹침 해소는 Discrete 솔버에서 수행한다.
 
@@ -68,9 +68,9 @@ public 생성자로 실제 `KinematicBody`를 생성한다. 호출자는 바디�
 | 같은 우선순위의 동적 A / 동적 B | A에 MTV의 절반, B에 반대 방향 절반 적용 |
 | 다른 우선순위의 동적 A / 동적 B | 낮은 바디에 MTV 전체 적용. 높은 바디의 보정은 0 |
 
-동적 바디의 초기 보정은 이동 요청이나 질량의 비율을 사용하지 않는다. 같은 유효 우선순위의 두 바디가 정지해 있어도 시작부터 겹쳐 있다면 절반씩 분리한다. 같은 우선순위에서 한쪽만 Ghost를 종료한 경우에는 종료한 바디만 보정한다. 우선순위가 다르면 Ghost 종료 여부와 관계없이 낮은 바디에 MTV 전체를 적용한다.
+동적 바디의 초기 보정은 이동 요청이나 질량의 비율을 사용하지 않는다. 같은 유효 우선순위의 두 바디가 정지해 있어도 시작부터 겹쳐 있다면 절반씩 분리한다. 같은 우선순위에서 한쪽만 트리거를 종료해 복구가 필요한 경우에는 종료한 바디만 보정한다. 우선순위가 다르면 복구 상태와 관계없이 낮은 바디에 MTV 전체를 적용한다.
 
-Initial을 시작할 때 `initialPushPriorities`에 각 바디의 원래 `Priority`를 채운다. 정적 접촉에서 실제 보정이 발생하면 `int.MaxValue`를, 동적 접촉에서는 실제로 보정된 바디에 더 높은 상대의 유효 우선순위를 전달한다. 접근 이동량은 요구하지 않는다. 따라서 같은 Initial 안에서는 벽의 권한과 연쇄 밀림이 후속 쌍의 우선순위에 영향을 준다.
+Initial을 시작할 때 `overlapPushPriorities`에 각 바디의 원래 `Priority`를 채운다. 정적 접촉에서 실제 보정이 발생하면 `int.MaxValue`를, 동적 접촉에서는 실제로 보정된 바디에 더 높은 상대의 유효 우선순위를 전달한다. 접근 이동량은 요구하지 않는다. 따라서 같은 Initial 안에서는 벽의 권한과 연쇄 밀림이 후속 쌍의 우선순위에 영향을 준다.
 
 Initial 종료 시 이 버퍼를 비운다. 이동 솔버는 자신의 `DiscreteBodyState` 또는 `SweepBodyState`를 원래 바디 우선순위로 생성한다. Initial과 이동이 공유하는 상태 객체나 중간 `Reset`은 없으며, Initial의 `int.MaxValue` 권한도 이동에 넘어가지 않는다.
 
@@ -97,9 +97,13 @@ smoothCorrectionOffset = smoothCorrectionStartOffset * (1f - easeoutProgress);
 
 최종 Transform 위치는 `anchorPosition + smoothCorrectionOffset`이다. 시작할 때 빠르게 따라잡고 끝으로 갈수록 감속한다. 새 Initial 보정이 들어오면 남은 오프셋에 합산하고 진행 시간을 다시 시작한다. `t >= 1`이면 `isSmoothingCorrection`을 끄고 오프셋을 0으로 만든다. 충돌·Cast는 보정이 끝난 `anchorPosition`을 즉시 사용하므로, 스무딩 중 표시 위치와 계산 위치는 다를 수 있다. Discrete 이동 후 MTV는 `ApplyCorrection()`을 직접 호출하며 이 스무딩을 추가하지 않는다.
 
-## Ghost 복구
+## 트리거와 복구
 
-`SetGhost(false)`는 `NeedsGhostRecovery`를 켠다. 이동 솔버 실행 후 `CompleteGhostRecovery()`가 Ghost 통과 대상과의 actionable overlap을 검사한다. 남은 겹침이 없으면 복구 플래그를 끄고, 반복 한도로 겹침이 남았다면 다음 Solve에서도 복구 대상으로 유지한다. 이 단계는 추가 위치 보정을 수행하지 않는다. 충돌 제외와 통과 대상 여부는 `CanCollideWith()`와 `CanGhostThrough()`가 결정한다.
+`SetTrigger(true)`는 바디를 통과 가능한 상태로 만든다. `TriggerLayer`는 이 트리거 바디가 어떤 상대 레이어를 통과할 수 있는지 정하며, 일반 `Physics2D` Layer Collision Matrix는 접촉 후보를 검사할지 결정한다. 트리거 쌍은 겹침 접촉으로 이벤트를 기록하지만 위치 보정에는 사용하지 않는다. 이동 경로의 Sweep Cast에서도 트리거 쌍을 충돌로 막지 않는다.
+
+트리거 이벤트는 의도적으로 **Discrete 겹침 샘플링**으로 동작한다. 각 Kinematic Tick의 Solve 시작에서 Teleport 적용 후 Initial 겹침을 검사하고, 그때 실제로 겹친 쌍만 기록한다. 따라서 이동으로 새로 겹친 쌍의 Enter는 다음 Tick의 샘플에서 발생하고, 다음 샘플에도 겹쳐 있으면 Stay가 발생한다. 두 샘플 사이 이동 경로에만 잠시 존재하고 샘플 시점에는 겹치지 않는 트리거는 감지되지 않을 수 있다. 이는 현재 의도된 동작이며 경로 Sweep 기반의 연속 트리거 감지는 하지 않는다. 겹침이 사라진 쌍의 Exit도 다음 샘플 비교에서 발행된다.
+
+쌍별 Enter·Stay·Exit은 두 바디 모두에 호출되며 인자는 상대 앵커의 `GameObject`다. `SetTrigger(false)`로 트리거 상태를 끝내면 `NeedTriggerRecovery`가 켜지고, 다음 Initial 겹침 해소에서 같은 우선순위 상대와 겹친 경우 종료 바디에 전체 MTV를 적용한다. 우선순위가 다른 쌍은 기존 우선순위 보정 규칙을 따른다. 복구 여부 판정은 레이어 마스크가 아니라 이 상태와 초기 접촉 보정 정책으로 처리한다.
 
 ## 결과 반영과 조회 시점
 

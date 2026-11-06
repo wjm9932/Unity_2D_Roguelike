@@ -17,7 +17,6 @@ namespace Kinematic.Runtime
         private readonly List<SweepContact> sweepContacts = new();
         private readonly List<Vector2> contactNormals = new();
         private readonly List<SweepBodyState> simultaneousSlideStates = new();
-
         private const int MaxSlideIterationCount = 1;
         private const float MinMoveDistance = 0.000001f;
         private const float SweepDirectionEpsilon = 0.000001f;
@@ -25,13 +24,17 @@ namespace Kinematic.Runtime
         private struct SweepBodyState
         {
             internal Vector2 RemainingMoveDelta { get; set; }
+            internal Vector2 StartCenter { get; }
+            internal Vector2 AppliedMoveDelta { get; set; }
             internal int SlideIterationCount { get; set; }
             internal int PushPriority { get; set; }
             internal bool HasMoveDelta => RemainingMoveDelta.sqrMagnitude > MinMoveDistance * MinMoveDistance;
 
-            internal SweepBodyState(Vector2 moveDelta, int pushPriority)
+            internal SweepBodyState(Vector2 moveDelta, int pushPriority, Vector2 startCenter)
             {
                 RemainingMoveDelta = moveDelta;
+                StartCenter = startCenter;
+                AppliedMoveDelta = Vector2.zero;
                 SlideIterationCount = 0;
                 PushPriority = pushPriority;
             }
@@ -62,7 +65,7 @@ namespace Kinematic.Runtime
             for (var bodyIndex = 0; bodyIndex < dynamicBodies.Count; bodyIndex++)
             {
                 var body = dynamicBodies[bodyIndex];
-                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), (int)body.Priority));
+                sweepBodyStates.Add(new SweepBodyState(body.ConsumeMoveDelta(), (int)body.Priority, body.Center));
             }
 
             Sweep();
@@ -129,12 +132,12 @@ namespace Kinematic.Runtime
         private void TryUpdateClosestSweepHit(int bodyAIndex, int bodyBIndex, KinematicBody candidate, Vector2 moveDelta, ref float closestFraction)
         {
             var body = dynamicBodies[bodyAIndex];
-            if (body.CanCollideWith(candidate) == false)
+            if (body.CanCollideWith(candidate) == false || body.IsTriggerPair(candidate))
             {
                 return;
             }
 
-            if (KinematicShapeCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
+            if (KinematicCast.TryCast(body.Center, body.Shape, candidate, moveDelta, out var candidateHit) == false)
             {
                 return;
             }
@@ -185,9 +188,7 @@ namespace Kinematic.Runtime
                         var priorityB = sweepBodyStates[contact.BodyBIndex].PushPriority;
                         if (priorityA == priorityB)
                         {
-                            SlideSweepBody(contact.BodyAIndex, contact.Normal);
-                            // B에서 보는 상대 표면의 법선은 A가 사용하는 법선의 반대 방향이다.
-                            SlideSweepBody(contact.BodyBIndex, -contact.Normal);
+                            SlideEqualPriorityBodies(contact.BodyAIndex, contact.BodyBIndex, contact.Normal);
                         }
                         else if (priorityA < priorityB)
                         {
@@ -342,13 +343,67 @@ namespace Kinematic.Runtime
             }
         }
 
+        // 같은 우선순위 바디는 서로를 정지 표면으로 취급하지 않고 상대 이동으로 처리한다.
+        // 양쪽에 SlideSweepBody를 적용하면 함께 움직이는 중에도 한쪽의 법선 이동만 잘려 밀던 원들이 끊길 수 있다.
+        // 서로 가까워지는 법선 성분만 분담해 제거하고, 두 바디가 함께 움직이는 성분은 유지한다.
+        private void SlideEqualPriorityBodies(int bodyAIndex, int bodyBIndex, Vector2 normal)
+        {
+            var stateA = sweepBodyStates[bodyAIndex];
+            var stateB = sweepBodyStates[bodyBIndex];
+
+            var moveDeltaA = stateA.HasMoveDelta ? stateA.RemainingMoveDelta : Vector2.zero;
+            var moveDeltaB = stateB.HasMoveDelta ? stateB.RemainingMoveDelta : Vector2.zero;
+            var intoSurface = Vector2.Dot(moveDeltaA - moveDeltaB, normal);
+
+            // 앞선 접촉 처리로 더 이상 서로 접근하지 않는다면 보정하지 않는다.
+            if (intoSurface >= -SweepDirectionEpsilon)
+            {
+                return;
+            }
+
+            var reachedLimitA = stateA.SlideIterationCount >= MaxSlideIterationCount;
+            var reachedLimitB = stateB.SlideIterationCount >= MaxSlideIterationCount;
+
+            if (reachedLimitA || reachedLimitB)
+            {
+                SlideSweepBody(bodyAIndex, normal);
+                SlideSweepBody(bodyBIndex, -normal);
+                return;
+            }
+
+            // 양쪽 모두 한도가 남아 있을 때 상대 접근 성분을 분담한다.
+            var weightA = Mathf.Max(0f, -Vector2.Dot(moveDeltaA, normal));
+            var weightB = Mathf.Max(0f, Vector2.Dot(moveDeltaB, normal));
+            var totalWeight = weightA + weightB;
+
+            if (totalWeight <= 0f)
+            {
+                return;
+            }
+
+            if (weightA > 0f)
+            {
+                stateA.RemainingMoveDelta = moveDeltaA - normal * (intoSurface * weightA / totalWeight);
+                stateA.SlideIterationCount++;
+                sweepBodyStates[bodyAIndex] = stateA;
+            }
+
+            if (weightB > 0f)
+            {
+                stateB.RemainingMoveDelta = moveDeltaB + normal * (intoSurface * weightB / totalWeight);
+                stateB.SlideIterationCount++;
+                sweepBodyStates[bodyBIndex] = stateB;
+            }
+        }
+
         private void SlideLowerPriorityBody(int lowerPriorityIndex, int higherPriorityIndex, Vector2 normal)
         {
             var lowerState = sweepBodyStates[lowerPriorityIndex];
             var higherState = sweepBodyStates[higherPriorityIndex];
-            // 이미 슬라이드 한도를 썼어도 높은 바디의 접근 이동에 밀리는 것은 허용한다.
-            if (lowerState.SlideIterationCount >= MaxSlideIterationCount
-                && Vector2.Dot(higherState.RemainingMoveDelta, normal) <= 0f)
+
+            // 동시 충돌에서 앞선 접촉 처리로 이동 방향이 바뀌었을 수 있으므로
+            // 바뀐 이동 방향이 현재 충돌면 안쪽으로 이동하는 경우에만 남은 이동량을 0으로 만든다.
+            if (lowerState.SlideIterationCount >= MaxSlideIterationCount && Vector2.Dot(higherState.RemainingMoveDelta, normal) <= 0f)
             {
                 SlideSweepBody(lowerPriorityIndex, normal);
                 return;
@@ -388,7 +443,13 @@ namespace Kinematic.Runtime
                 }
 
                 // 부딪히지 않는 위치까지만 이동
-                dynamicBodies[bodyIndex].ApplyMovement(state.RemainingMoveDelta * fraction);
+                if (fraction > 0f)
+                {
+                    // 작은 이동 델타는 현재 좌표에서 표현 가능한 간격보다 작으면 앵커에 더해도 같은 값으로 반올림될 수 있다.
+                    state.AppliedMoveDelta += state.RemainingMoveDelta * fraction;
+                    // 이동 델타를 시작 위치 기준으로 누적하여 다음 표현 가능한 좌표로 반올림될 만큼 쌓이면 그 위치 차이를 앵커에 적용한다.
+                    dynamicBodies[bodyIndex].ApplyMovement(state.StartCenter + state.AppliedMoveDelta - dynamicBodies[bodyIndex].Center);
+                }
                 // 이동하고 남은 이동량 갱신
                 state.RemainingMoveDelta *= (1f - fraction);
                 // 상태 갱신

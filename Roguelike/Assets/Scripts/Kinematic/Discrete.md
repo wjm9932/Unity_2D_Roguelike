@@ -149,5 +149,5 @@ Discrete에는 경로 검사나 이동량을 작은 단계로 나누는 substep 
 ## 관련 코드
 
 - [Discrete 솔버](Runtime/KinematicDiscreteSolver.cs)
-- [접촉 정보 계산](Runtime/KinematicBodyExtension.cs)
+- [접촉 정보 계산](Runtime/KinematicCollision.cs)
 - [공통 초기 처리](Runtime/KinematicSolver.cs)

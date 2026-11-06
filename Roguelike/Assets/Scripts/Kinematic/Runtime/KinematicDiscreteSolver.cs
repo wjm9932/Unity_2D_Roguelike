@@ -106,7 +106,7 @@ namespace Kinematic.Runtime
                         break;
                     }
 
-                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.TryCollide(staticBody, out var contact) == false)
+                    if (dynamicBody.CanCollideWith(staticBody) == false || dynamicBody.IsTriggerPair(staticBody) || dynamicBody.TryCollide(staticBody, out var contact) == false)
                     {
                         continue;
                     }
@@ -140,7 +140,7 @@ namespace Kinematic.Runtime
 
                     var bodyB = dynamicBodies[bodyBIndex];
 
-                    if (bodyA.CanCollideWith(bodyB) == false)
+                    if (bodyA.CanCollideWith(bodyB) == false || bodyA.IsTriggerPair(bodyB))
                     {
                         continue;
                     }
@@ -158,7 +158,7 @@ namespace Kinematic.Runtime
                     if (stateA.PushPriority != stateB.PushPriority)
                     {
                         // 낮은 우선순위 바디를 먼저 보정하고, 새로 발생한 겹침은 이후 Iteration에서 해결한다.
-                        KinematicBodyExtension.GetPriorityCorrections(contact, stateA.PushPriority, stateB.PushPriority, out var priorityCorrectionA, out var priorityCorrectionB);
+                        KinematicCollision.GetPriorityCorrections(contact, stateA.PushPriority, stateB.PushPriority, out var priorityCorrectionA, out var priorityCorrectionB);
 
                         bodyA.ApplyCorrection(priorityCorrectionA);
                         bodyB.ApplyCorrection(priorityCorrectionB);

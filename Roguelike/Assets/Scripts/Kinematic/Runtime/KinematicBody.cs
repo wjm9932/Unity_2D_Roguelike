@@ -1,4 +1,5 @@
 ﻿using Kinematic.Data;
+using System;
 using UnityEngine;
 
 namespace Kinematic.Runtime
@@ -11,10 +12,33 @@ namespace Kinematic.Runtime
     /// </summary>
     public sealed class KinematicBody
     {
-        private readonly Transform target;
+        /// <summary>
+        /// 바디가 소유하는 트랜스폼
+        /// </summary>
+        public Transform Transform { get; private set; }
+
+        /// <summary>
+        /// 둘 중 하나의 트리거 통과 조건으로 처음 겹친 Tick에 상대 anchor의 GameObject를 전달한다.
+        /// </summary>
+        public event Action<GameObject> OnTriggerEnter;
+        /// <summary>
+        /// 이전 Tick부터 트리거 겹침이 유지되면 상대 anchor의 GameObject를 전달한다.
+        /// </summary>
+        public event Action<GameObject> OnTriggerStay;
+        /// <summary>
+        /// 기존 트리거 겹침이 종료되면 전달한다. 트리거 종료와 등록 해제도 포함한다.
+        /// </summary>
+        public event Action<GameObject> OnTriggerExit;
+
+        internal void NotifyTriggerEnter(KinematicBody other) => OnTriggerEnter?.Invoke(other.Transform.gameObject);
+        internal void NotifyTriggerStay(KinematicBody other) => OnTriggerStay?.Invoke(other.Transform.gameObject);
+        internal void NotifyTriggerExit(KinematicBody other) => OnTriggerExit?.Invoke(other.Transform.gameObject);
+
+        #region Movement
         private Vector2 anchorPosition;
         private Vector2 pendingMoveDelta;
         private Vector2? pendingTeleportPosition;
+        #endregion
         
         #region Smooth Correction
         private Vector2 smoothCorrectionOffset;
@@ -47,9 +71,17 @@ namespace Kinematic.Runtime
         }
 #endif
 
+        #region Shape
         public ColliderInfo Shape { get; }
         public Vector2 Center => anchorPosition + Shape.Offset;
+        #endregion
+
+        #region Layer
         public int Layer => Shape.Layer;
+        public int TriggerLayer { get; set; } = ~0;
+        #endregion
+
+        #region Internal Values
         internal AABB Bounds
         {
             get
@@ -66,15 +98,17 @@ namespace Kinematic.Runtime
         }
         internal MovePriority Priority { get; }
         internal bool IsStatic { get; }
-        internal bool IsGhost { get; private set; }
-        internal bool NeedsGhostRecovery { get; set; }
+        internal bool IsTrigger { get; private set; }
+        internal bool NeedTriggerRecovery { get; set; }
+        #endregion
 
-        public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority)
+        public KinematicBody(Transform transform, ColliderInfo shape, MovePriority movePriority, bool isTrigger)
         {
-            target = transform;
+            Transform = transform;
             anchorPosition = transform.position;
             Shape = shape;
             Priority = movePriority;
+            IsTrigger = isTrigger;
             IsStatic = false;
 
 #if UNITY_EDITOR
@@ -82,11 +116,12 @@ namespace Kinematic.Runtime
 #endif
         }
 
-        public KinematicBody(Transform transform, ColliderInfo shape)
+        public KinematicBody(Transform transform, ColliderInfo shape, bool isTrigger)
         {
-            target = transform;
+            Transform = transform;
             anchorPosition = transform.position;
             Shape = shape;
+            IsTrigger = isTrigger;
             IsStatic = true;
 
 #if UNITY_EDITOR
@@ -94,19 +129,16 @@ namespace Kinematic.Runtime
 #endif
         }
 
-        public void SetGhost(bool isGhost)
+        public void SetTrigger(bool isTrigger)
         {
-            if (IsGhost == isGhost) return;
+            if (IsTrigger == isTrigger) return;
 
-            // 고스트가 끝나면 종료한 바디만 기존 Pawn 겹침을 해소한다.
-            NeedsGhostRecovery = isGhost == false;
-            IsGhost = isGhost;
+            IsTrigger = isTrigger;
+            NeedTriggerRecovery = !isTrigger;
         }
 
         public void Teleport(Vector2 position)
         {
-            Debug.Assert(IsStatic == false, $"Request Teleport to static body: {target.name}");
-
             // 텔레포트 이동도 solve 시점과 통일하기 위해서 즉시 적용하지 않는다.
             // Teleport와 Cast의 호출 순서가 조회 결과에 영향을 주지 않도록 Solve 시점에 일반 이동과 함께 일괄 적용한다.
             pendingTeleportPosition = position;
@@ -114,8 +146,6 @@ namespace Kinematic.Runtime
 
         public void Move(Vector2 moveDelta)
         {
-            Debug.Assert(IsStatic == false, $"Request Move to static body: {target.name}");
-
             pendingMoveDelta += moveDelta;
         }
 
@@ -169,7 +199,7 @@ namespace Kinematic.Runtime
                 }
             }
 
-            target.position = anchorPosition + smoothCorrectionOffset;
+            Transform.position = anchorPosition + smoothCorrectionOffset;
 
 #if UNITY_EDITOR
             DrawMovementDebug();

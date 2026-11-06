@@ -27,7 +27,25 @@ table th + th, table td + td { border-left: 1px solid #808080; }
 
 공통 동작 계약에는 Move 변위의 누적, Teleport 목적지의 예약, Solve 시점의 충돌 계산과 Transform 반영이 포함된다. 게임 쪽 래퍼는 사용할 수 있는 기능을 제한하며, 이 계약을 변경하지 않는다. 접근 제한과 생성·조회 방식은 [실행 흐름](RuntimeFlow.md#바디의-접근-권한)에 설명한다.
 
-현재 지원 형상은 원과 축에 정렬된 박스다. 회전된 박스나 다각형은 지원하지 않으며, 충돌 형상에 Transform의 회전과 scale을 자동으로 반영하지 않는다. Unity의 `Rigidbody2D`가 이동을 계산하는 구조가 아니라, 직접 보관한 위치와 형상으로 이동 및 접촉을 계산한다.
+바디의 지원 형상은 원과 축에 정렬된 박스다. `OverlapBox` 조회 형상에는 도 단위 회전을 지정할 수 있지만 바디의 이동·Sweep 형상은 회전하지 않는다. 충돌 형상에 Transform의 회전과 scale을 자동으로 반영하지 않는다. Unity의 `Rigidbody2D`가 이동을 계산하는 구조가 아니라, 직접 보관한 위치와 형상으로 이동 및 접촉을 계산한다.
+
+## Overlap 조회
+
+`Kinematics.OverlapBox(center, halfExtents, angle, layerMask, results)`와 `Kinematics.OverlapCircle(center, radius, layerMask, results)`는 현재 겹친 바디의 GameObject를 전달받은 `List<GameObject>`에 채우고 개수를 반환한다. 마스크를 생략하는 오버로드는 모든 레이어를 검사한다. `halfExtents`는 박스 전체 크기의 절반이며 `angle`은 도 단위다.
+
+`OverlapBox`는 `angle` 대신 `Vector2 forward`를 받는 오버로드도 제공한다. 이 버전은 박스의 로컬 Y축을 forward로, X축을 좌우로 사용한다. `halfExtents.x`는 좌우 폭의 절반, `halfExtents.y`는 앞뒤 길이의 절반이다. 진입점에서 `Atan2(forward.y, forward.x) * Rad2Deg - 90`으로 변환해 기존 각도 버전에 전달한다. 방향은 정규화할 필요가 없으며 영벡터를 전달하면 목록을 비우고 결과 0개를 반환한다. `center`는 두 버전 모두 박스 중심이다.
+
+```csharp
+private readonly List<GameObject> overlapResults = new();
+
+var count = Kinematics.OverlapBox(center, new Vector2(2f, 0.5f), 45f, LayerMask.GetMask("Pawn"), overlapResults);
+var forwardCount = Kinematics.OverlapBox(center, new Vector2(0.5f, 2f), forward, LayerMask.GetMask("Pawn"), overlapResults);
+var circleCount = Kinematics.OverlapCircle(center, 2f, LayerMask.GetMask("Pawn"), overlapResults);
+```
+
+각 호출은 결과 목록을 먼저 비우며 거리순 정렬을 하지 않는다. 결과는 바디 단위이므로 같은 GameObject에 여러 바디가 등록되어 있으면 중복될 수 있다. 정적·동적 바디를 모두 조회하고, `layerMask`는 포함할 레이어를 지정한다. 트리거 상태, TriggerLayer, Layer Collision Matrix는 조회 결과를 제한하지 않으며 자기 자신도 별도로 제외하지 않는다. 기존 접촉 판정처럼 양의 깊이로 겹친 형상을 검출하고 경계에 닿기만 한 접촉은 제외한다.
+
+박스 조회는 OBB를 감싸는 AABB로 QuadTree 후보를 모은 뒤, 대상 AABB와는 네 축의 SAT로 검사한다. 원과의 검사는 원 중심을 조회 박스의 로컬 좌표로 옮겨 기존 원·박스 판정을 사용한다. 원 조회는 기존 원·원 및 원·AABB 판정을 재사용한다. 조회는 바디를 이동시키거나 트리거 이벤트를 발생시키지 않는다.
 
 ## 구현 의도
 
@@ -63,29 +81,34 @@ Teleport 적용, 초기 겹침 해소, Transform 동기화는 `KinematicSolver`�
 | `GameLoop` | Unity Update 이후 메시지 처리·Pawn 이동 요청 소비·Kinematic Tick 순서 연결 |
 | `KinematicBody` | 계산용 위치와 형상 보관, 이동·Teleport 요청 보관, 결과 위치 반영 |
 | `KinematicBodyAdapter` | Unity 컴포넌트 생명주기와 바디 등록 연결 |
-| `KinematicSolver` | Teleport, 초기 겹침 해소, 이동 솔버 실행, Transform 동기화 |
+| `KinematicSolver` | Teleport, 초기 겹침 해소와 트리거 겹침 수집, 이동 솔버 실행, Transform 동기화, 트리거 이벤트 발행 |
 | `KinematicSweepSolver` | 이동 경로의 충돌 시점 계산과 잔여 이동 조정.|
 | `KinematicDiscreteSolver` | 이동 후 겹침을 검사하고 MTV 보정 분담.|
-| `KinematicCast` | 정적·동적 후보를 조회하고 가장 가까운 Cast 결과 선택 또는 전체 결과 수집 |
-| `KinematicShapeCast` | 한 형상 쌍의 이동 경로와 최초 접촉 계산 |
-| `KinematicBodyExtension` | 한 형상 쌍의 현재 겹침과 분리 정보 계산 |
+| `KinematicCast` | 정적·동적 후보 조회, 가장 가까운 Cast 결과 선택 또는 전체 결과 수집 |
+| `KinematicShapeCast` | 한 형상 쌍의 이동 경로와 최초 접촉 계산. `KinematicCast.cs` 안에 함께 정의 |
+| `KinematicCollision` | 현재 겹침 판정, 접촉·MTV 계산, 우선순위에 따른 보정 벡터 계산 |
+| `KinematicBodyExtension` | Layer Collision Matrix 필터, 트리거 쌍 판별, 접촉 판정을 형상 판정으로 연결 |
 | `QuadTree` | 정적 바디의 AABB 후보 조회 |
 
 ## 이동 우선순위
 
 동적 바디 생성 시 `MovePriority`를 지정한다. 순서는 `High > Medium > Low`이며, 같은 우선순위끼리는 각 이동 솔버의 기본 충돌 반응을 사용한다. 다른 우선순위끼리는 낮은 바디의 이동을 조정하거나 위치를 보정한다. 정적 바디는 움직이지 않는다. 연쇄 접촉의 결과는 이동 방식, 등록 순서와 반복 한도에 영향을 받으며, 모든 겹침의 해소를 보장하지 않는다.
 
-Sweep은 접촉 후 낮은 바디의 상대 이동에서 충돌 표면 안쪽 성분을 제거한다. 높은 바디가 정지한 낮은 바디를 향해 이동하면 낮은 바디도 같은 Solve에서 밀려난다. Discrete와 초기 겹침 해소는 우선순위가 다른 쌍에서 낮은 바디에 MTV 전체를 적용한다. 보정 경로를 Cast하거나 막힌 분량을 높은 바디에 나누는 처리는 없으며, 보정으로 생긴 다른 겹침은 이후 쌍 검사나 반복에서 처리한다. Ghost와 레이어 설정으로 충돌이 제외된 쌍에는 우선순위를 적용하지 않는다.
+Sweep은 접촉 후 낮은 바디의 상대 이동에서 충돌 표면 안쪽 성분을 제거한다. 높은 바디가 정지한 낮은 바디를 향해 이동하면 낮은 바디도 같은 Solve에서 밀려난다. Discrete와 초기 겹침 해소는 우선순위가 다른 쌍에서 낮은 바디에 MTV 전체를 적용한다. 보정 경로를 Cast하거나 막힌 분량을 높은 바디에 나누는 처리는 없으며, 보정으로 생긴 다른 겹침은 이후 쌍 검사나 반복에서 처리한다. Layer Collision Matrix에서 무시된 쌍은 검사하지 않고, 트리거 쌍은 위치 보정하지 않는다.
 
 이동 중 다른 바디에 밀린 바디는 해당 이동 Solve 동안 밀림을 전달한 바디의 우선순위를 사용한다. 따라서 `High → Medium → Low`와 `High → Low → Medium`에서 밀림을 이어갈 수 있다. 바디 자체의 `MovePriority`는 바뀌지 않는다. 정지한 높은 바디에 부딪쳐 자신의 이동만 취소한 경우에는 우선순위를 전달받지 않는다. Discrete는 `Dot(sourceMoveDelta, correction) > 0`을 승계 조건으로 사용하므로 MTV 축이 이동과 직교하는 경우에는 승계되지 않을 수 있다.
 
-우선순위 상태는 각 단계가 소유한다. Initial은 `KinematicSolver.initialPushPriorities`, Discrete는 `DiscreteBodyState`, Sweep은 `SweepBodyState`를 사용한다. 각 단계는 바디의 원래 우선순위로 시작한다. Initial에서는 접근 이동이 없어도 실제 MTV 보정이 있으면 우선순위를 전달하고, 정적 벽의 보정은 `int.MaxValue`로 전달한다. 이 상태는 Initial 종료 시 비우며 이동 솔버에는 전달하지 않는다. 공유 `KinematicCorrectionState`와 단계 사이의 `Reset`은 없다.
+우선순위 상태는 각 단계가 소유한다. Initial은 `KinematicSolver.overlapPushPriorities`, Discrete는 `DiscreteBodyState`, Sweep은 `SweepBodyState`를 사용한다. 각 단계는 바디의 원래 우선순위로 시작한다. Initial에서는 접근 이동이 없어도 실제 MTV 보정이 있으면 우선순위를 전달하고, 정적 벽의 보정은 `int.MaxValue`로 전달한다. 이 상태는 Initial 종료 시 비우며 이동 솔버에는 전달하지 않는다. 공유 `KinematicCorrectionState`와 단계 사이의 `Reset`은 없다.
 
 Sweep의 바디별 슬라이드 한도는 1회이며, 높은 바디에 밀리는 이동은 횟수를 소비하지 않는다. Discrete의 이동 후 겹침 해소 한도는 `KinematicSettings.MaxSolverIterationCount`를 사용한다. Discrete는 요청 이동 후 위치에서 검사하므로 이동 경로 중간의 통과를 검출하지 않는다.
 
 ## 초기 겹침의 표시 보정
 
 `OverlapResolutionMode.Instant`는 Initial의 위치 보정을 즉시 표시한다. `Smooth`는 계산용 `anchorPosition`을 즉시 보정하고, 표시용 Transform 오프셋만 0.1초 동안 이차 ease-out으로 줄인다. 충돌과 Cast는 이미 보정된 계산 위치를 사용한다. Discrete 이동 후 MTV에는 이 스무딩을 적용하지 않는다. 수식과 재보정 시 동작은 [실행 흐름](RuntimeFlow.md#instant와-smooth-보정)에 정리한다.
+
+## 트리거 이벤트
+
+`KinematicBody`의 `OnTriggerEnter`, `OnTriggerStay`, `OnTriggerExit`는 상대 바디의 `GameObject`를 전달하며, 겹친 쌍의 양쪽 바디에서 모두 호출한다. 트리거는 Solve 시작의 Initial 겹침에서만 샘플링한다. 따라서 이벤트는 Discrete 겹침 기준이며, 두 샘플 사이 이동 경로에만 들어갔다 나온 대상은 감지되지 않을 수 있다. 이 동작은 의도된 설계다. 레이어와 트리거 복구 흐름은 [실행 흐름](RuntimeFlow.md#트리거와-복구)을 참고한다.
 
 ## Sweep과 Discrete의 동작 차이
 

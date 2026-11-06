@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Input;
 using Kinematic.Data;
 using R3;
@@ -11,6 +12,10 @@ namespace Kinematic.Runtime
     {
         [SerializeField] private ColliderInfo colliderInfo = ColliderInfo.CreateCircle(Vector2.zero, 0.5f);
         [SerializeField] private AnimationCurve dashCurve;
+        [SerializeField] private bool runOverlapBoxTest;
+        [SerializeField] private Vector2 overlapBoxHalfExtents = new(0.5f, 1f);
+        [SerializeField] private float overlapBoxCenterDistance = 1.5f;
+        [SerializeField] private LayerMask overlapBoxLayerMask = ~0;
 
         public float speed;
 
@@ -25,10 +30,13 @@ namespace Kinematic.Runtime
         private float dashDistance;
         private Vector2 dashDirection;
         private Vector2 lastMoveDirection = Vector2.right;
+        private readonly List<GameObject> overlapBoxResults = new();
+        private bool hasOverlapBoxResult;
+        private Vector2 overlapBoxForward = Vector2.up;
 
         private void OnEnable()
         {
-            body = new KinematicBody(transform, colliderInfo, priority);
+            body = new KinematicBody(transform, colliderInfo, priority, false);
             KinematicWorld.Register(body);
             dashSubscription = InputManager.Instance.PawnControls.Dash.Subscribe(value =>
             {
@@ -38,6 +46,21 @@ namespace Kinematic.Runtime
                     //Teleport();
                 }
             });
+
+            body.OnTriggerEnter += triggered =>
+            {
+                Debug.Log($"Enter: {triggered.name}, FrameCount: {Time.frameCount}");
+            };
+
+            body.OnTriggerStay += triggered =>
+            {
+                Debug.Log($"Stay: {triggered.name}, FrameCount: {Time.frameCount}");
+            };
+
+            body.OnTriggerExit += triggered =>
+            {
+                Debug.Log($"Exit: {triggered.name}, FrameCount: {Time.frameCount}");
+            };
         }
 
         private void Start()
@@ -81,6 +104,11 @@ namespace Kinematic.Runtime
 
         private void Update()
         {
+            if (runOverlapBoxTest)
+            {
+                UpdateOverlapBoxTest();
+            }
+
             if (useInput == false) return;
 
             if (isDashing && dashElapsedTime < dashDuration)
@@ -91,7 +119,7 @@ namespace Kinematic.Runtime
             }
 
             isDashing = false;
-            body.SetGhost(false);
+            body.SetTrigger(false);
 
             var moveInput = GetMoveInput();
             if (moveInput.sqrMagnitude > Mathf.Epsilon)
@@ -99,6 +127,37 @@ namespace Kinematic.Runtime
 
             body.Move(moveInput * speed * Time.deltaTime);
         }
+
+        private void UpdateOverlapBoxTest()
+        {
+            //var pivot = GetOverlapBoxPivot();
+
+            //var camera = Camera.main;
+            //var mouse = Mouse.current;
+            //if (camera != null && mouse != null)
+            //{
+            //    var ray = camera.ScreenPointToRay(mouse.position.ReadValue());
+            //    var plane = new Plane(Vector3.forward, new Vector3(0f, 0f, transform.position.z));
+            //    if (plane.Raycast(ray, out var enter))
+            //    {
+            //        var mouseWorldPosition = (Vector2)ray.GetPoint(enter);
+            //        var direction = mouseWorldPosition - pivot;
+            //        if (direction.sqrMagnitude > Mathf.Epsilon)
+            //        {
+            //            overlapBoxForward = direction.normalized;
+            //        }
+            //    }
+            //}
+
+            //var center = GetOverlapBoxCenter();
+            //Kinematics.OverlapBox(center, overlapBoxHalfExtents, overlapBoxForward, overlapBoxLayerMask.value, overlapBoxResults);
+            //overlapBoxResults.Remove(gameObject);
+            //hasOverlapBoxResult = overlapBoxResults.Count > 0;
+        }
+
+        private Vector2 GetOverlapBoxPivot() => (Vector2)transform.position + colliderInfo.Offset;
+
+        private Vector2 GetOverlapBoxCenter() => GetOverlapBoxPivot() + overlapBoxForward * overlapBoxCenterDistance;
 
         private void Dash()
         {
@@ -109,7 +168,8 @@ namespace Kinematic.Runtime
             dashElapsedTime = 0f;
             dashDistance = 0f;
             isDashing = true;
-            body.SetGhost(true);
+            body.TriggerLayer = LayerMask.GetMask("Pawn");
+            body.SetTrigger(true);
         }
 
         private void Teleport()
@@ -121,7 +181,6 @@ namespace Kinematic.Runtime
 
         private void UpdateDash()
         {
-            body.SetGhost(true);
             dashElapsedTime = Mathf.Min(dashElapsedTime + Time.deltaTime, dashDuration);
 
             var distance = dashCurve.Evaluate(dashElapsedTime);
@@ -138,7 +197,7 @@ namespace Kinematic.Runtime
             dashSubscription = null;
 
             isDashing = false;
-            body.SetGhost(false);
+            body.SetTrigger(false);
             KinematicWorld.Unregister(body);
             body = null;
         }
@@ -156,6 +215,39 @@ namespace Kinematic.Runtime
             {
                 Gizmos.DrawWireCube(center, new Vector3(colliderInfo.HalfExtents.x * 2f, colliderInfo.HalfExtents.y * 2f, 0f));
             }
+
+            if (runOverlapBoxTest == false)
+            {
+                return;
+            }
+
+            var overlapBoxCenter = GetOverlapBoxCenter();
+            DrawOverlapBoxGizmo(overlapBoxCenter);
+
+            if (Application.isPlaying == false)
+            {
+                return;
+            }
+
+            Gizmos.color = Color.green;
+            foreach (var result in overlapBoxResults)
+            {
+                if (result != null)
+                {
+                    Gizmos.DrawLine(overlapBoxCenter, result.transform.position);
+                }
+            }
+        }
+
+        private void DrawOverlapBoxGizmo(Vector2 center)
+        {
+            Gizmos.color = hasOverlapBoxResult ? Color.green : Color.cyan;
+
+            var previousMatrix = Gizmos.matrix;
+            var angle = Mathf.Atan2(overlapBoxForward.y, overlapBoxForward.x) * Mathf.Rad2Deg - 90f;
+            Gizmos.matrix = Matrix4x4.TRS((Vector3)center, Quaternion.Euler(0f, 0f, angle), Vector3.one);
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(overlapBoxHalfExtents.x * 2f, overlapBoxHalfExtents.y * 2f, 0f));
+            Gizmos.matrix = previousMatrix;
         }
 #endif
     }

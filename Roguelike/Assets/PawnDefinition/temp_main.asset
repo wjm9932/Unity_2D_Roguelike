@@ -16,11 +16,12 @@ MonoBehaviour:
     avatar: {fileID: 9214124318480007271, guid: 079fc677e417bfa46ad88dbe10bc9df5, type: 3}
     colliderInfo:
       layer: 3
-      shape: 0
+      shape: 1
       offset: {x: 0, y: 0}
       radius: 0.5
       halfExtents: {x: 0.5, y: 0.5}
     movePriority: 1
+    isTrigger: 0
   pawnStatsDefinition:
     speed: 4
     activeAccelerationCurve:

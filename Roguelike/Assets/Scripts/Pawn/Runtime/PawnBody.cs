@@ -11,23 +11,50 @@ namespace Pawn.Runtime
     {
         private readonly KinematicBody body;
 
+        public Transform Transform => body.Transform;
         public ColliderInfo Shape => body.Shape;
         public Vector2 Center => body.Center;
         public int Layer => body.Layer;
+
+        public static readonly int IgnoreLayer = LayerMask.GetMask("Pawn");
+        private int triggerLayer;
 
         internal PawnBody(KinematicBody body)
         {
             this.body = body;
         }
 
-        public void SetGhost(bool isGhost) => body.SetGhost(isGhost);
+        public void SetGhost(bool isGhost)
+        {
+            if (isGhost)
+            {
+                triggerLayer = body.TriggerLayer;
 
-        public bool ShapeCast(Vector2 distance, out ShapeCastHit hit) => ShapeCast(distance, ~0, out hit);
+                body.TriggerLayer = LayerMask.GetMask("Pawn");
+            }
+            else
+            {
+                body.TriggerLayer = triggerLayer;
+            }
 
-        public bool ShapeCast(Vector2 distance, int layerMask, out ShapeCastHit hit) => Kinematics.ShapeCast(body, distance, layerMask, out hit);
+            body.SetTrigger(isGhost);
+        }
 
-        public int ShapeCastAll(Vector2 distance, List<ShapeCastHit> results) => ShapeCastAll(distance, ~0, results);
+        public void SetTrigger(bool isTrigger) => body.SetTrigger(isTrigger);
 
-        public int ShapeCastAll(Vector2 distance, int layerMask, List<ShapeCastHit> results) => Kinematics.ShapeCastAll(body, distance, layerMask, results);
+
+        #region ShapeCast
+        public bool ShapeCast(Vector2 direction, float distance, out CastHit hit)
+            => ShapeCast(direction, distance, ~0, out hit);
+
+        public bool ShapeCast(Vector2 direction, float distance, int layerMask, out CastHit hit)
+            => Kinematics.ShapeCast(body, direction, distance, layerMask & ~IgnoreLayer, out hit);
+
+        public int ShapeCastAll(Vector2 direction, float distance, List<CastHit> hits)
+            => ShapeCastAll(direction, distance, ~0, hits);
+
+        public int ShapeCastAll(Vector2 direction, float distance, int layerMask, List<CastHit> hits)
+            => Kinematics.ShapeCastAll(body, direction, distance, layerMask & ~IgnoreLayer, hits);
+        #endregion
     }
 }
